@@ -1,23 +1,30 @@
-from conans import ConanFile, CMake, GCC
-from conans.util.files import mkdir
-from conans.model.values import Values
-from conans.model.options import Options
-from os import getcwd, rename
-from os.path import join, exists, dirname, abspath
+from conans import ConanFile, CMake
+from os import getcwd
 
 class Domains(ConanFile):
     name = "domains"
     version = "0.0.1"
     url = "https://github.com/skizzay/domains.git"
     settings = "os", "compiler", "build_type", "arch"
-    generators = "cmake", "ycm"
-    exports = "CMakeLists.txt", "cqrs/*", "utils/*", "messaging/*", "tests/*"
+    generators = "cmake", "txt", "env", "ycm"
+    exports = "CMakeLists.txt", "domains/*"
+    dev_requires = 'catch/1.5.8@kiitos/external'
 
     def build(self):
         self.output.info(self.options)
         cmake = CMake(self.settings)
-        self._execute("cmake %s %s %s" % (self.conanfile_directory, cmake.command_line, self._extra_cmake_flags))
+        self._execute("cmake %s %s %s" % (self.conanfile_directory, cmake.command_line, self._build_tests))
         self._execute("cmake --build %s %s" % (getcwd(), cmake.build_config))
 
-        if self.options.build_tests:
+        if self.scope.dev:
             self.run("ctest")
+
+    @property
+    def _build_tests(self):
+        if self.scope.dev:
+            return "-DBUILD_TESTS=1"
+        return "-DBUILD_TESTS=0"
+
+    def _execute(self, command):
+        self.output.info(command)
+        self.run(command)

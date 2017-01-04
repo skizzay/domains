@@ -7,6 +7,7 @@
 # Precompiled Headers
 *.gch
 *.pch
+*.pyc
 
 # Compiled Dynamic libraries
 *.so
@@ -27,6 +28,10 @@
 *.exe
 *.out
 *.app
+
+# Editor Temporary files
+.*.sw?
+~*
 
 # Build directory
 build/

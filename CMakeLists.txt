@@ -1,0 +1,29 @@
+CMAKE_MINIMUM_REQUIRED(VERSION 3.1)
+PROJECT(domains)
+
+SET(CMAKE_EXPORT_COMPILE_COMMANDS 1)
+
+IF ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+   SET(warnings "-Wall -Wextra -Werror")
+ELSEIF ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+   SET(warnings "/W4 /WX /EHsc")
+ENDIF()
+
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++1z ${warnings}")
+SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${warnings}")
+
+SET(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}")
+INCLUDE(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
+CONAN_BASIC_SETUP()
+
+#STRING(REPLACE "-std=c++11" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+
+ADD_SUBDIRECTORY(domains/utils)
+
+IF(BUILD_TESTS)
+  ENABLE_TESTING()
+  ADD_SUBDIRECTORY(unit_tests/domains/messaging)
+  #TARGET_INCLUDE_DIRECTORIES(messaging_tests PUBLIC ${CMAKE_SOURCE_DIR})
+  #ADD_TEST(cqrs_tests bin/cqrs_tests)
+  ADD_TEST(messaging_tests bin/messaging_tests)
+ENDIF()

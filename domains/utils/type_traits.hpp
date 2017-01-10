@@ -6,13 +6,19 @@
 #include <experimental/type_traits>
 
 namespace domains {
-inline namespace v1 { using std::experimental::is_unsigned_v; }
+inline namespace v1 {
+using std::experimental::is_signed_v;
+using std::experimental::is_unsigned_v;
+}
 }
 
 #else
 
 namespace domains {
-inline namespace v2 { using std::is_unsigned_v; }
+inline namespace v2 {
+using std::is_signed_v;
+using std::is_unsigned_v;
+}
 }
 
 #endif

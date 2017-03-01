@@ -1,7 +1,8 @@
-MESSAGE(Blammo)
 ADD_EXECUTABLE(messaging_tests
    main.cpp
-   buffer.cpp)
+   buffer.cpp
+   dispatcher.cpp
+   protocol.cpp)
 TARGET_INCLUDE_DIRECTORIES(messaging_tests PRIVATE
    ${PROJECT_SOURCE_DIR}
    ${CONAN_INCLUDE_DIRS_CATCH})

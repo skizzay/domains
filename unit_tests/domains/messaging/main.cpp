@@ -1,2 +1,6 @@
 #define CATCH_CONFIG_MAIN
-#include <catch/catch.hpp>
+#if __has_include(<catch/catch.hpp>)
+#  include <catch/catch.hpp>
+#elif __has_include(<catch.hpp>)
+#  include <catch.hpp>
+#endif

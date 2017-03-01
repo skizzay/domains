@@ -8,7 +8,7 @@ class Domains(ConanFile):
     settings = "os", "compiler", "build_type", "arch"
     generators = "cmake", "txt", "env", "ycm"
     exports = "CMakeLists.txt", "domains/*"
-    dev_requires = 'catch/1.5.8@kiitos/external'
+    dev_requires = 'catch/1.5.0@TyRoXx/stable'
 
     def build(self):
         self.output.info(self.options)
@@ -23,7 +23,7 @@ class Domains(ConanFile):
     def _build_tests(self):
         if self.scope.dev:
             return "-DBUILD_TESTS=1"
-        return "-DBUILD_TESTS=0"
+        return ""
 
     def _execute(self, command):
         self.output.info(command)

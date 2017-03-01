@@ -1,17 +1,39 @@
 #pragma once
 
+#include <domains/utils/type_traits.hpp>
+#include <cstdlib>
+#include <stdexcept>
+
 namespace domains {
 
-template <class ProtocolDefinition>
+// TODO: Pull out of header and place in source file.
+inline namespace v1 {
+inline void abort(std::exception const &) noexcept {
+   std::abort();
+}
+}
+
+template <class Parser, void (*OnException)(std::exception const &)=abort>
 class protocol {
-   ProtocolDefinition &impl;
+   Parser &parser;
 
 public:
-   protocol(ProtocolDefinition &impl_) : impl(impl_) {
+   explicit protocol(Parser &p) :
+      parser(p)
+   {
    }
 
-   void on_data(void const *data, std::size_t num_bytes) {
-      impl.get_domain_handler().dispatch(data, num_bytes, impl.get_message_type(data, num_bytes));
+   void process_buffer(void const *const data, std::size_t num_bytes) noexcept(noexcept(OnException(std::declval<std::exception const &>()))) {
+      try {
+         auto message_type = parser.get_message_type(data, num_bytes);
+         parser.parse(message_type, data, num_bytes);
+      }
+      catch (std::exception const &e) {
+         OnException(e);
+      }
+      catch (...) {
+         std::abort();
+      }
    }
 };
 }

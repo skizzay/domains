@@ -1,5 +1,9 @@
 #include "domains/messaging/buffer.hpp"
-#include <catch/catch.hpp>
+#if __has_include(<catch/catch.hpp>)
+#  include <catch/catch.hpp>
+#elif __has_include(<catch.hpp>)
+#  include <catch.hpp>
+#endif
 
 using namespace domains;
 using ENCODING = domains::encode_native_endian;

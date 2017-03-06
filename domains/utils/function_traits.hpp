@@ -70,4 +70,7 @@ template <class T>
 struct function_traits<const volatile T &&> : function_traits<T> {};
 template <class T>
 struct function_traits : function_traits<decltype(&T::operator())> {};
+
+template <class T, std::size_t I>
+using argument_of_t = typename function_traits<T>::template argument<I>::type;
 }

@@ -25,7 +25,7 @@ using std::experimental::basic_string_view;
 using std::experimental::string_view;
 using std::experimental::wstring_view;
 namespace literals {
-namespace string_view_literals = std::literals::string_view_literals;
+namespace string_view_literals = std::experimental::literals::string_view_literals;
 }
 }
 }

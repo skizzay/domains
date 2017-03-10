@@ -8,7 +8,7 @@ class Domains(ConanFile):
     settings = "os", "compiler", "build_type", "arch"
     generators = "cmake", "txt", "env", "ycm"
     exports = "CMakeLists.txt", "domains/*"
-    dev_requires = 'catch/1.5.0@TyRoXx/stable'
+    dev_requires = 'catch/1.5.0@TyRoXx/stable', 'kerchow/1.0.1@skizzay/stable'
 
     def build(self):
         self.output.info(self.options)

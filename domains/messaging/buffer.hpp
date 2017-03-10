@@ -1,324 +1,192 @@
 #pragma once
 
+#include <domains/messaging/encoding.hpp>
 #include <domains/utils/type_traits.hpp>
+
 #include <climits>
 #include <cstdint>
 #include <cstring>
-#include <system_error>
-#include <type_traits>
 #include <experimental/type_traits>
+#include <system_error>
 
 namespace domains {
 
-struct encode_big_endian {
-   static constexpr void put(const uint8_t value, uint8_t *const bytes) {
-      bytes[0] = value;
-   }
-
-   static constexpr void put(const uint16_t value, uint8_t *const bytes) {
-      bytes[0] = value >> (1 * CHAR_BIT);
-      bytes[1] = value & 0xFF;
-   }
-
-   static constexpr void put(const uint32_t value, uint8_t *const bytes) {
-      bytes[0] = value >> (3 * CHAR_BIT);
-      bytes[1] = (value >> (2 * CHAR_BIT)) & 0xFF;
-      bytes[2] = (value >> (1 * CHAR_BIT)) & 0xFF;
-      bytes[3] = value & 0xFF;
-   }
-
-   static constexpr void put(const uint64_t value, uint8_t *const bytes) {
-      bytes[0] = value >> (7 * CHAR_BIT);
-      bytes[1] = (value >> (6 * CHAR_BIT)) & 0xFF;
-      bytes[2] = (value >> (5 * CHAR_BIT)) & 0xFF;
-      bytes[3] = (value >> (4 * CHAR_BIT)) & 0xFF;
-      bytes[4] = (value >> (3 * CHAR_BIT)) & 0xFF;
-      bytes[5] = (value >> (2 * CHAR_BIT)) & 0xFF;
-      bytes[6] = (value >> (1 * CHAR_BIT)) & 0xFF;
-      bytes[7] = value & 0xFF;
-   }
-
-   static constexpr void read(uint8_t &value, uint8_t const *const bytes) {
-      value = bytes[0];
-   }
-
-   static constexpr void read(uint16_t &value, uint8_t const *const bytes) {
-      value = (static_cast<uint16_t>(bytes[0]) << (1 * CHAR_BIT)) |
-              (static_cast<uint16_t>(bytes[1]) << (0 * CHAR_BIT));
-   }
-
-   static constexpr void read(uint32_t &value, uint8_t const *const bytes) {
-      value = (static_cast<uint32_t>(bytes[0]) << (3 * CHAR_BIT)) |
-              (static_cast<uint32_t>(bytes[1]) << (2 * CHAR_BIT)) |
-              (static_cast<uint32_t>(bytes[2]) << (1 * CHAR_BIT)) |
-              (static_cast<uint32_t>(bytes[3]) << (0 * CHAR_BIT));
-   }
-
-   static constexpr void read(uint64_t &value, uint8_t const *const bytes) {
-      value = (static_cast<uint64_t>(bytes[0]) << (7 * CHAR_BIT)) |
-              (static_cast<uint64_t>(bytes[1]) << (6 * CHAR_BIT)) |
-              (static_cast<uint64_t>(bytes[2]) << (5 * CHAR_BIT)) |
-              (static_cast<uint64_t>(bytes[3]) << (4 * CHAR_BIT)) |
-              (static_cast<uint64_t>(bytes[4]) << (3 * CHAR_BIT)) |
-              (static_cast<uint64_t>(bytes[5]) << (2 * CHAR_BIT)) |
-              (static_cast<uint64_t>(bytes[6]) << (1 * CHAR_BIT)) |
-              (static_cast<uint64_t>(bytes[7]) << (0 * CHAR_BIT));
-   }
-};
-
-struct encode_little_endian {
-   static constexpr void put(const uint8_t value, uint8_t *const bytes) {
-      bytes[0] = value;
-   }
-
-   static constexpr void put(const uint16_t value, uint8_t *const bytes) {
-      bytes[1] = value >> (1 * CHAR_BIT);
-      bytes[0] = value & 0xFF;
-   }
-
-   static constexpr void put(const uint32_t value, uint8_t *const bytes) {
-      bytes[3] = value >> (3 * CHAR_BIT);
-      bytes[2] = (value >> (2 * CHAR_BIT)) & 0xFF;
-      bytes[1] = (value >> (1 * CHAR_BIT)) & 0xFF;
-      bytes[0] = value & 0xFF;
-   }
-
-   static constexpr void put(const uint64_t value, uint8_t *const bytes) {
-      bytes[7] = value >> (7 * CHAR_BIT);
-      bytes[6] = (value >> (6 * CHAR_BIT)) & 0xFF;
-      bytes[5] = (value >> (5 * CHAR_BIT)) & 0xFF;
-      bytes[4] = (value >> (4 * CHAR_BIT)) & 0xFF;
-      bytes[3] = (value >> (3 * CHAR_BIT)) & 0xFF;
-      bytes[2] = (value >> (2 * CHAR_BIT)) & 0xFF;
-      bytes[1] = (value >> (1 * CHAR_BIT)) & 0xFF;
-      bytes[0] = value & 0xFF;
-   }
-
-   static constexpr void read(uint8_t &value, uint8_t const *const bytes) {
-      value = bytes[0];
-   }
-
-   static constexpr void read(uint16_t &value, uint8_t const *const bytes) {
-      value = (static_cast<uint16_t>(bytes[1]) << (1 * CHAR_BIT)) |
-              (static_cast<uint16_t>(bytes[0]) << (0 * CHAR_BIT));
-   }
-
-   static constexpr void read(uint32_t &value, uint8_t const *const bytes) {
-      value = (static_cast<uint32_t>(bytes[3]) << (3 * CHAR_BIT)) |
-              (static_cast<uint32_t>(bytes[2]) << (2 * CHAR_BIT)) |
-              (static_cast<uint32_t>(bytes[1]) << (1 * CHAR_BIT)) |
-              (static_cast<uint32_t>(bytes[0]) << (0 * CHAR_BIT));
-   }
-
-   static constexpr void read(uint64_t &value, uint8_t const *const bytes) {
-      value = (static_cast<uint64_t>(bytes[7]) << (7 * CHAR_BIT)) |
-              (static_cast<uint64_t>(bytes[6]) << (6 * CHAR_BIT)) |
-              (static_cast<uint64_t>(bytes[5]) << (5 * CHAR_BIT)) |
-              (static_cast<uint64_t>(bytes[4]) << (4 * CHAR_BIT)) |
-              (static_cast<uint64_t>(bytes[3]) << (3 * CHAR_BIT)) |
-              (static_cast<uint64_t>(bytes[2]) << (2 * CHAR_BIT)) |
-              (static_cast<uint64_t>(bytes[1]) << (1 * CHAR_BIT)) |
-              (static_cast<uint64_t>(bytes[0]) << (0 * CHAR_BIT));
-   }
-};
-
-struct encode_native_endian {
-   template <class T>
-   static constexpr void put(const T value, uint8_t *const bytes) {
-      using std::memcpy;
-      memcpy(bytes, &value, sizeof(T));
-   }
-
-   template <class T>
-   static constexpr void read(T &value, uint8_t const *const bytes) {
-      using std::memcpy;
-      memcpy(&value, bytes, sizeof(T));
-   }
-};
-
 namespace details_ {
 
-template <typename Encoding>
 struct buffer_impl {
-   constexpr buffer_impl(void *const data, const std::size_t size) noexcept : start_{data},
-                                                                              size_{size},
-                                                                              index_{0} {
+   buffer_impl(void *const data, const std::size_t size) noexcept : data_{data},
+                                                                    size_{size},
+                                                                    index_{0},
+                                                                    error_() {
+      if ((size == 0U) || (data_ == nullptr)) {
+         data_ = nullptr;
+         size_ = 0U;
+      }
    }
 
-   constexpr buffer_impl() noexcept : buffer_impl{nullptr, 0} {
+   buffer_impl() noexcept : buffer_impl{nullptr, 0} {
    }
 
-   constexpr buffer_impl(const buffer_impl &other) noexcept : start_{other.start_},
-                                                              size_{other.size_},
-                                                              index_{other.index_} {
+   buffer_impl(const buffer_impl &other) noexcept : data_{other.data_},
+                                                    size_{other.size_},
+                                                    index_{other.index_},
+                                                    error_{other.error_} {
    }
 
-   constexpr buffer_impl(buffer_impl &&other) noexcept : start_{other.start_},
-                                                         size_{other.size_},
-                                                         index_{other.index_} {
-      other.start_ = nullptr;
+   buffer_impl(buffer_impl &&other) noexcept : data_{other.data_},
+                                               size_{other.size_},
+                                               index_{other.index_},
+                                               error_{std::move(other.error_)} {
+      other.data_ = nullptr;
       other.size_ = 0;
       other.index_ = 0;
    }
 
-   constexpr buffer_impl &operator=(const buffer_impl &other) noexcept {
+   buffer_impl &operator=(const buffer_impl &other) noexcept {
       if (this != &other) {
-         start_ = other.start_;
+         data_ = other.data_;
          size_ = other.size_;
          index_ = other.index_;
+         error_ = other.error_;
       }
       return *this;
    }
 
-   constexpr buffer_impl &operator=(buffer_impl &&other) noexcept {
+   buffer_impl &operator=(buffer_impl &&other) noexcept {
       if (this != &other) {
-         start_ = other.start_;
+         data_ = other.data_;
          size_ = other.size_;
          index_ = other.index_;
-         other.start_ = nullptr;
+         other.data_ = nullptr;
          other.size_ = 0;
          other.index_ = 0;
       }
       return *this;
    }
 
-   constexpr void *index_to_memory(const std::size_t index) const noexcept {
-      return static_cast<void *>(&static_cast<unsigned char *>(start_)[index]);
+   void *index_to_memory(const std::size_t index) const noexcept {
+      return static_cast<void *>(&static_cast<unsigned char *>(data_)[index]);
    }
 
-   constexpr std::size_t current() const noexcept {
+   std::size_t current() const noexcept {
       return index_;
    }
 
-   constexpr std::size_t size() const noexcept {
+   std::size_t size() const noexcept {
       return size_;
    }
 
-   constexpr std::size_t remaining() const noexcept {
+   std::size_t remaining() const noexcept {
       return size() - current();
    }
 
-   std::error_code seek_to(const std::size_t index) noexcept {
-      // LIKELY
-      if (index < size()) {
-         index_ = index;
-         return {};
-      }
-      return make_error_code(std::errc::value_too_large);
+   explicit operator bool() const noexcept {
+      return remaining() != 0U;
    }
 
-   constexpr void *data() const noexcept {
+   void seek(std::ptrdiff_t const offset) noexcept {
+      if (((offset > 0) && (current() + offset) < size()) ||
+          ((offset < 0) && (current() > static_cast<std::size_t const>(std::abs(offset)))) ||
+          (offset == 0)) {
+         advance(offset);
+      } else {
+         error_ = make_error_code(std::errc::result_out_of_range);
+      }
+   }
+
+   void *data() const noexcept {
       return index_to_memory(0);
    }
 
-   template <typename UnsignedInteger>
-   std::enable_if_t<is_unsigned_v<UnsignedInteger>, std::error_code>
-   read_into(UnsignedInteger &value, const std::size_t current) const noexcept {
-      // LIKELY
-      if (has_enough_bytes(sizeof(UnsignedInteger), current)) {
-         Encoding::read(value, as_array<uint8_t>(current));
-         return {};
-      }
-      return make_error_code(std::errc::value_too_large);
-   }
-
-   template <typename UnsignedInteger>
-   std::enable_if_t<is_unsigned_v<UnsignedInteger>, std::error_code>
-   put_from(const UnsignedInteger value, const std::size_t current) const noexcept {
-      // LIKELY
-      if (has_enough_bytes(sizeof(UnsignedInteger), current)) {
-         Encoding::put(value, as_array<uint8_t>(current));
-         return {};
-      }
-      return make_error_code(std::errc::value_too_large);
-   }
-
-   template <class T>
-   constexpr void check_read(T &value, const std::size_t current) {
-      std::error_code ec = this->read_into(value, current);
-      if (ec) {
-         throw std::system_error{ec};
-      }
-   }
-
-   std::error_code put(const void *const value, const std::size_t n,
-                       const std::size_t current) noexcept {
-      using std::memcpy;
-      // LIKELY
-      if (has_enough_bytes(n, current)) {
-         memcpy(index_to_memory(current), value, n);
-         return {};
-      }
-      return make_error_code(std::errc::value_too_large);
-   }
-
-   template <class T>
-   constexpr void check_put(const T value, std::size_t &current) {
-      std::error_code ec = this->put(value, current);
-      if (ec) {
-         throw std::system_error{ec};
-      }
-   }
-
-   constexpr void unchecked_advance(const std::size_t num_bytes) noexcept {
+   void advance(std::ptrdiff_t const num_bytes) noexcept {
       index_ += num_bytes;
    }
 
-   std::error_code skip(const std::size_t num_bytes) noexcept {
-      return checked_advance(num_bytes);
+   std::error_code error() const noexcept {
+      return error_;
    }
 
-private:
+   void clear_error() noexcept {
+      error_ = {};
+   }
+
+   bool set_current(std::size_t const i) noexcept {
+      // LIKELY
+      if (i < size()) {
+         index_ = i;
+         return true;
+      }
+      return false;
+   }
+
+   void skip(std::size_t const num_bytes) noexcept {
+      safe_action(num_bytes, current(), [=]() { advance(num_bytes); });
+   }
+
    template <class T>
-   constexpr T *as_array(const std::size_t index) const noexcept {
+   T *as_array(std::size_t const index) const noexcept {
       return static_cast<T *>(index_to_memory(index));
    }
 
-   constexpr bool has_enough_bytes(const std::size_t num_bytes, const std::size_t index) const
-       noexcept {
-      const std::size_t new_index = index + num_bytes;
-      return (new_index <= size()) && (new_index > index);
+   bool has_enough_bytes(std::size_t const num_bytes, std::size_t const index) const noexcept {
+      std::size_t const new_index = index + num_bytes;
+      return (index < new_index) && (new_index <= size());
    }
 
-   std::error_code checked_advance(const std::size_t num_bytes) noexcept {
+   template <class F>
+   void safe_action(std::size_t const num_bytes, std::size_t const index, F f) noexcept {
       // LIKELY
-      if (has_enough_bytes(num_bytes, current())) {
-         unchecked_advance(num_bytes);
-         return {};
+      if (!error_) {
+         // LIKELY
+         if (has_enough_bytes(num_bytes, index)) {
+            f();
+         } else {
+            error_ = make_error_code(std::errc::not_enough_memory);
+         }
       }
-      return std::make_error_code(std::errc::value_too_large);
    }
 
-   void *start_;
+   template <class F>
+   void safe_action(std::size_t const num_bytes, std::size_t const index, F f) const noexcept {
+      // LIKELY
+      if (has_enough_bytes(num_bytes, index)) {
+         f();
+      }
+   }
+
+   void *data_;
    std::size_t size_;
    std::size_t index_;
+   std::error_code error_;
 };
 }
 
 template <class Encoding>
-class read_buffer : private details_::buffer_impl<Encoding> {
+class read_buffer final : private details_::buffer_impl {
    class mutable_reader {
       read_buffer &buffer;
 
-   public:
-      explicit constexpr mutable_reader(read_buffer &b) noexcept : buffer{b} {
-      }
-
       template <class UnsignedInteger>
-      constexpr std::enable_if_t<is_unsigned_v<UnsignedInteger>, UnsignedInteger> to() {
+      std::enable_if_t<is_unsigned_v<UnsignedInteger>, UnsignedInteger> to() noexcept {
          UnsignedInteger value{};
-         buffer.check_read(value, buffer.current());
-         buffer.unchecked_advance(sizeof(UnsignedInteger));
+         buffer.safe_action(sizeof(UnsignedInteger), buffer.current(), [&] {
+            Encoding::decode(value, buffer.as_array<uint8_t const>(buffer.current()));
+            buffer.advance(sizeof(UnsignedInteger));
+         });
          return value;
       }
 
       template <class SignedInteger>
-      constexpr std::enable_if_t<is_signed_v<SignedInteger>, SignedInteger> to() {
+      std::enable_if_t<is_signed_v<SignedInteger>, SignedInteger> to() noexcept {
          return this->to<typename std::make_unsigned<SignedInteger>::type>();
       }
 
+   public:
+      mutable_reader(read_buffer &b) noexcept : buffer{b} {
+      }
+
       template <class T>
-      constexpr operator T() {
+      operator T() noexcept {
          return this->to<T>();
       }
    };
@@ -328,103 +196,118 @@ class read_buffer : private details_::buffer_impl<Encoding> {
       std::size_t const index;
 
    public:
-      explicit constexpr const_reader(read_buffer const &b, std::size_t const n) noexcept
-          : buffer{b},
-            index{n} {
+      const_reader(read_buffer const &b, std::size_t const n) noexcept : buffer{b}, index{n} {
       }
 
-      template <class UnsignedInteger>
-      operator std::enable_if_t<is_unsigned_v<UnsignedInteger>, UnsignedInteger>() const {
-         UnsignedInteger value;
-         buffer.check_read(value, index);
+      template <class T>
+      operator T() const {
+         T value{};
+         buffer.safe_action(sizeof(T), index, [&] {
+            Encoding::decode(value, buffer.as_array<uint8_t const>(index));
+         });
          return value;
       }
    };
 
+   friend class mutable_reader;
+   friend class const_reader;
+
 public:
-   using details_::buffer_impl<Encoding>::buffer_impl;
-   using details_::buffer_impl<Encoding>::size;
-   using details_::buffer_impl<Encoding>::remaining;
-   using details_::buffer_impl<Encoding>::current;
-   using details_::buffer_impl<Encoding>::skip;
-   using details_::buffer_impl<Encoding>::seek_to;
-
-   constexpr mutable_reader read_next() {
-      return mutable_reader(*this);
-   }
-
-   template <class T>
-   constexpr std::enable_if_t<is_unsigned_v<T>, std::error_code> read_next(T &value) noexcept {
-      auto ec = this->read_into(value, current());
-      // LIKELY
-      if (!ec) {
-         this->unchecked_advance(sizeof(T));
-      }
-      return ec;
-   }
+   using details_::buffer_impl::buffer_impl;
+   using details_::buffer_impl::size;
+   using details_::buffer_impl::remaining;
+   using details_::buffer_impl::current;
+   using details_::buffer_impl::skip;
+   using details_::buffer_impl::seek;
+   using details_::buffer_impl::data;
+   using details_::buffer_impl::set_current;
+   using details_::buffer_impl::error;
 
    template <class T>
-   constexpr const_reader read_at(const std::size_t index) const {
+   read_buffer<Encoding> &operator>>(T &value) noexcept {
+      value = read();
+      return *this;
+   }
+
+   mutable_reader read() noexcept {
+      return {*this};
+   }
+
+   const_reader read_at(std::size_t const index) const noexcept {
       return {*this, index};
    }
 
-   template <class T>
-   constexpr std::enable_if_t<is_unsigned_v<T>, std::error_code>
-   read_at(T &value, const std::size_t index) const noexcept {
-      return this->read_into(value, index);
+   void read_into(void *const destination, std::size_t const num_bytes) noexcept {
+      safe_action(num_bytes, current(), [&] {
+         std::memcpy(destination, index_to_memory(current()), num_bytes);
+         advance(num_bytes);
+      });
+   }
+
+   void read_into_at(void *const destination, std::size_t const num_bytes,
+                     std::size_t const index) const noexcept {
+      safe_action(num_bytes, index,
+                  [&] { std::memcpy(destination, index_to_memory(index), num_bytes); });
    }
 };
 
 template <class Encoding>
-struct write_buffer : private details_::buffer_impl<Encoding> {
-   using details_::buffer_impl<Encoding>::buffer_impl;
-   using details_::buffer_impl<Encoding>::size;
-   using details_::buffer_impl<Encoding>::remaining;
-   using details_::buffer_impl<Encoding>::current;
-   using details_::buffer_impl<Encoding>::skip;
-   using details_::buffer_impl<Encoding>::seek_to;
+class write_buffer : details_::buffer_impl {
+public:
+   using details_::buffer_impl::buffer_impl;
+   using details_::buffer_impl::size;
+   using details_::buffer_impl::remaining;
+   using details_::buffer_impl::current;
+   using details_::buffer_impl::skip;
+   using details_::buffer_impl::seek;
+   using details_::buffer_impl::data;
+   using details_::buffer_impl::set_current;
+   using details_::buffer_impl::error;
 
    template <class T>
-   constexpr std::enable_if_t<is_unsigned_v<T>, std::error_code> put_next(const T value) noexcept {
-      auto ec = this->put_from(value, current());
-      // LIKELY
-      if (!ec) {
-         this->unchecked_advance(sizeof(T));
-      }
-      return ec;
+   write_buffer<Encoding> &operator<<(T const value) noexcept {
+      write(value);
+      return *this;
    }
 
    template <class T>
-   constexpr std::enable_if_t<is_unsigned_v<T>, void> put_next_or_throw(const T value) {
-      this->check_put(value, current());
+   void write(T const value) noexcept {
+      safe_action(sizeof(T), current(), [=] {
+         Encoding::encode(value, as_array<uint8_t>(current()));
+         advance(sizeof(T));
+      });
+   }
+
+   void write_into(void const *const source, std::size_t const num_bytes) noexcept {
+      safe_action(num_bytes, current(), [=] {
+         std::memcpy(index_to_memory(current()), source, num_bytes);
+         advance(num_bytes);
+      });
    }
 
    template <class T>
-   constexpr std::enable_if_t<is_unsigned_v<T>, std::error_code>
-   put_at(const T value, const std::size_t index) noexcept {
-      return this->put(value, index);
+   void write_at(T const value, std::size_t const index) noexcept {
+      safe_action(sizeof(T), index, [=] { Encoding::encode(value, as_array<uint8_t>(index)); });
    }
 
-   template <class T>
-   constexpr std::enable_if_t<is_unsigned_v<T>, void> put_at_or_throw(const T value,
-                                                                      const std::size_t index) {
-      this->check_put(value, index);
+   void write_into_at(void const *const source, std::size_t const num_bytes,
+                      std::size_t const index) noexcept {
+      safe_action(num_bytes, index, [=] {
+         std::memcpy(index_to_memory(index), source, num_bytes);
+      });
    }
 
-   constexpr read_buffer<Encoding> read() const noexcept {
-      return {this->data(), this->current()};
+   read_buffer<Encoding> read() const noexcept {
+      return {index_to_memory(0U), current()};
    }
 };
 
-template <class Encoding, class T>
-constexpr read_buffer<Encoding> &operator>>(read_buffer<Encoding> &source, T &value) {
-   value = source.read_next();
-   return source;
-}
 
-template <class Encoding, class T>
-constexpr write_buffer<Encoding> &operator<<(write_buffer<Encoding> &sink, const T value) {
-   sink.put_next_or_throw(value);
-   return sink;
+template <class Encoding, template <class> class Buffer>
+constexpr Buffer<Encoding> &checked(Buffer<Encoding> &buffer) {
+   if (buffer.error()) {
+      throw std::system_error{buffer.error()};
+   }
+   return buffer;
 }
 }

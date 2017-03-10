@@ -21,6 +21,8 @@ CONAN_BASIC_SETUP()
 ADD_SUBDIRECTORY(domains/utils)
 
 IF(BUILD_TESTS)
+  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -fprofile-arcs -ftest-coverage")
+  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0 -fprofile-arcs -ftest-coverage")
   ENABLE_TESTING()
   ADD_SUBDIRECTORY(unit_tests/domains/messaging)
   #TARGET_INCLUDE_DIRECTORIES(messaging_tests PUBLIC ${CMAKE_SOURCE_DIR})

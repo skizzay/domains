@@ -43,6 +43,7 @@ struct buffer_impl {
    }
 
    buffer_impl &operator=(const buffer_impl &other) noexcept {
+      // UNLIKELY
       if (this != &other) {
          data_ = other.data_;
          size_ = other.size_;
@@ -53,6 +54,7 @@ struct buffer_impl {
    }
 
    buffer_impl &operator=(buffer_impl &&other) noexcept {
+      // UNLIKELY
       if (this != &other) {
          data_ = other.data_;
          size_ = other.size_;
@@ -85,6 +87,7 @@ struct buffer_impl {
    }
 
    void seek(std::ptrdiff_t const offset) noexcept {
+      // LIKELY
       if (((offset > 0) && (current() + offset) < size()) ||
           ((offset < 0) && (current() > static_cast<std::size_t const>(std::abs(offset)))) ||
           (offset == 0)) {
@@ -292,9 +295,8 @@ public:
 
    void write_into_at(void const *const source, std::size_t const num_bytes,
                       std::size_t const index) noexcept {
-      safe_action(num_bytes, index, [=] {
-         std::memcpy(index_to_memory(index), source, num_bytes);
-      });
+      safe_action(num_bytes, index,
+                  [=] { std::memcpy(index_to_memory(index), source, num_bytes); });
    }
 
    read_buffer<Encoding> read() const noexcept {
@@ -302,9 +304,9 @@ public:
    }
 };
 
-
 template <class Encoding, template <class> class Buffer>
 constexpr Buffer<Encoding> &checked(Buffer<Encoding> &buffer) {
+   // UNLIKELY
    if (buffer.error()) {
       throw std::system_error{buffer.error()};
    }

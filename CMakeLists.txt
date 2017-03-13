@@ -19,6 +19,7 @@ CONAN_BASIC_SETUP()
 #STRING(REPLACE "-std=c++11" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 
 ADD_SUBDIRECTORY(domains/utils)
+ADD_SUBDIRECTORY(domains/messaging)
 
 IF(BUILD_TESTS)
   SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -fprofile-arcs -ftest-coverage")

@@ -40,6 +40,7 @@ struct buffer_impl {
       other.data_ = nullptr;
       other.size_ = 0;
       other.index_ = 0;
+      other.error_ = {};
    }
 
    buffer_impl &operator=(const buffer_impl &other) noexcept {
@@ -62,6 +63,7 @@ struct buffer_impl {
          other.data_ = nullptr;
          other.size_ = 0;
          other.index_ = 0;
+         other.error_ = {};
       }
       return *this;
    }
@@ -225,6 +227,7 @@ public:
    using details_::buffer_impl::data;
    using details_::buffer_impl::set_current;
    using details_::buffer_impl::error;
+   using details_::buffer_impl::operator bool;
 
    template <class T>
    read_buffer<Encoding> &operator>>(T &value) noexcept {
@@ -266,6 +269,7 @@ public:
    using details_::buffer_impl::data;
    using details_::buffer_impl::set_current;
    using details_::buffer_impl::error;
+   using details_::buffer_impl::operator bool;
 
    template <class T>
    write_buffer<Encoding> &operator<<(T const value) noexcept {

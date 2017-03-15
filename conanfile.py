@@ -11,7 +11,6 @@ class Domains(ConanFile):
     dev_requires = 'catch/1.5.0@TyRoXx/stable', 'kerchow/1.0.1@skizzay/stable'
 
     def build(self):
-        self.output.info(self.options)
         cmake = CMake(self.settings)
         self._execute("cmake %s %s %s" % (self.conanfile_directory, cmake.command_line, self._build_tests))
         self._execute("cmake --build %s %s" % (getcwd(), cmake.build_config))

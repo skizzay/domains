@@ -1,7 +1,10 @@
 #pragma once
 
 #include <domains/messaging/buffer.hpp>
+#include <domains/utils/memory_resource.hpp>
 #include <domains/utils/parameter_pack.hpp>
+
+#include <experimental/memory_resource>
 
 #include <algorithm>
 #include <memory>
@@ -96,7 +99,9 @@ struct single_dispatcher<T, Ts...> : T, single_dispatcher<Ts...> {
 };
 
 template <class... Ts>
-single_dispatcher<Ts...> make_single_dispatcher(Ts &&... ts) {
+single_dispatcher<Ts...> make_single_dispatcher(Ts &&... ts) noexcept(
+    std::is_nothrow_constructible<single_dispatcher<Ts...>,
+                                  decltype(std::forward<Ts>(ts))...>::value) {
    return single_dispatcher<Ts...>(std::forward<Ts>(ts)...);
 }
 
@@ -111,13 +116,44 @@ auto dispatch(single_dispatcher<T...> &dispatcher, U const &u) noexcept(noexcept
 template <class... Ts>
 class multi_dispatcher final {
    using handler_type = details_::base_message_handler<Ts...>;
-   std::vector<std::unique_ptr<handler_type>> handlers;
+   class handler_deleter final {
+      std::size_t size;
+      std::size_t align;
+      std::experimental::pmr::memory_resource *resource;
+
+   public:
+      handler_deleter(std::size_t s, std::size_t a,
+                      std::experimental::pmr::memory_resource *r) noexcept : size{s},
+                                                                             align{a},
+                                                                             resource{r} {
+      }
+
+      void operator()(handler_type *const handler) noexcept {
+         handler->~handler_type();
+         resource->deallocate(handler, size, align);
+      }
+   };
+   using handler_ptr = std::unique_ptr<handler_type, handler_deleter>;
+
+   std::vector<handler_ptr, std::experimental::pmr::polymorphic_allocator<handler_ptr>> handlers;
+
+   std::experimental::pmr::memory_resource *resource() const {
+      return handlers.get_allocator().resource();
+   }
 
 public:
+   explicit multi_dispatcher(std::experimental::pmr::memory_resource *resource =
+                                 std::experimental::pmr::get_default_resource()) noexcept
+       : handlers(resource) {
+   }
+
    template <class F>
    void add_handler(F &&f) {
-      using impl = details_::message_handler<F, parameter_pack<Ts...>, Ts...>;
-      handlers.emplace_back(std::make_unique<impl>(std::forward<F>(f)));
+      using Impl = details_::message_handler<F, parameter_pack<Ts...>, Ts...>;
+
+      Impl *const handler = static_cast<Impl *>(resource()->allocate(sizeof(Impl), alignof(Impl)));
+      new (handler) Impl(std::forward<F>(f));
+      handlers.emplace_back(handler, handler_deleter{sizeof(Impl), alignof(Impl), resource()});
    }
 
    template <class... Fs>

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <type_traits>
 
 namespace domains {
 
@@ -36,6 +37,7 @@ struct get<0, parameter_pack<Head, Tail...>> {
    using type = Head;
 };
 
+#if 0
 template <class, class>
 struct get;
 
@@ -46,4 +48,17 @@ template <class Head, class... Tail>
 struct get<Head, parameter_pack<Head, Tail...>> {
    using type = Head;
 };
+#endif
+
+template <class, class>
+struct in;
+
+template <class T>
+struct in<T, parameter_pack<>> : std::false_type {};
+
+template <class T, class... Tail>
+struct in<T, parameter_pack<T, Tail...>> : std::true_type {};
+
+template <class T, class Head, class... Tail>
+struct in<T, parameter_pack<Head, Tail...>> : in<T, parameter_pack<Tail...>> {};
 }

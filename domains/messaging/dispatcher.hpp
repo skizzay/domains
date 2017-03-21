@@ -12,9 +12,24 @@
 
 namespace domains {
 namespace details_ {
+template <class Impl, class T, class = void>
+struct message_dispatch_helper {
+   static void dispatch(Impl &, T const &) noexcept {
+   }
+};
+
+template <class Impl, class T>
+struct message_dispatch_helper<
+    Impl, T, std::void_t<decltype(std::declval<Impl>()(std::declval<T const &>()))>> {
+   static auto dispatch(Impl &handle, T const &t) noexcept(noexcept(handle(t)))
+       -> decltype(handle(t)) {
+      return handle(t);
+   }
+};
+
 template <class T>
 struct message_handler_base {
-   virtual void handle(T const &t) noexcept;
+   virtual void handle(T const &t) noexcept = 0;
 };
 
 template <class... T>
@@ -40,21 +55,6 @@ protected:
 
    inline Impl const &handler() const noexcept {
       return impl;
-   }
-};
-
-template <class Impl, class T, class = void>
-struct message_dispatch_helper {
-   static void dispatch(Impl &, T const &) noexcept {
-   }
-};
-
-template <class Impl, class T>
-struct message_dispatch_helper<
-    Impl, T, std::void_t<decltype(std::declval<Impl>()(std::declval<T const &>()))>> {
-   static auto dispatch(Impl &handle, T const &t) noexcept(noexcept(handle(t)))
-       -> decltype(handle(t)) {
-      return handle(t);
    }
 };
 
@@ -103,14 +103,6 @@ single_dispatcher<Ts...> make_single_dispatcher(Ts &&... ts) noexcept(
     std::is_nothrow_constructible<single_dispatcher<Ts...>,
                                   decltype(std::forward<Ts>(ts))...>::value) {
    return single_dispatcher<Ts...>(std::forward<Ts>(ts)...);
-}
-
-template <class U, class... T>
-auto dispatch(single_dispatcher<T...> &dispatcher, U const &u) noexcept(noexcept(
-    details_::message_dispatch_helper<single_dispatcher<T...>, U>::dispatch(dispatcher, u)))
-    -> decltype(details_::message_dispatch_helper<single_dispatcher<T...>, U>::dispatch(dispatcher,
-                                                                                        u)) {
-   return details_::message_dispatch_helper<single_dispatcher<T...>, U>::dispatch(dispatcher, u);
 }
 
 template <class... Ts>
@@ -169,4 +161,12 @@ public:
       }
    }
 };
+
+template <class F, class T>
+auto dispatch(F &f,
+              T const &t) noexcept(noexcept(details_::message_dispatch_helper<F, T>::dispatch(f,
+                                                                                              t)))
+    -> decltype(details_::message_dispatch_helper<F, T>::dispatch(f, t)) {
+   return details_::message_dispatch_helper<F, T>::dispatch(f, t);
+}
 }

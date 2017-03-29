@@ -22,9 +22,9 @@ bool const is_big_endian = [] {
 }();
 
 TEST_CASE("Encoding and decoding", "[encoding]") {
-   alignas(std::max_align_t) uint8_t same_memory[sizeof(std::uintmax_t)] = {0};
-   alignas(std::max_align_t) uint8_t diff_memory[sizeof(std::uintmax_t)] = {0};
-   alignas(std::max_align_t) uint8_t native_memory[sizeof(std::uintmax_t)] = {0};
+   alignas(std::max_align_t) byte same_memory[sizeof(std::uintmax_t)] = {static_cast<byte>(0)};
+   alignas(std::max_align_t) byte diff_memory[sizeof(std::uintmax_t)] = {static_cast<byte>(0)};
+   alignas(std::max_align_t) byte native_memory[sizeof(std::uintmax_t)] = {static_cast<byte>(0)};
    uint8_t u8 = picker.pick<uint8_t>();
    uint16_t u16 = picker.pick<uint16_t>();
    uint32_t u32 = picker.pick<uint32_t>();

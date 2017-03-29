@@ -1,6 +1,7 @@
 ADD_EXECUTABLE(messaging_tests
    main.cpp
    buffer.cpp
+   decoder.cpp
    dispatcher.cpp
    encoding.cpp)
 TARGET_INCLUDE_DIRECTORIES(messaging_tests PRIVATE

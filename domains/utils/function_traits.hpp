@@ -73,4 +73,8 @@ struct function_traits : function_traits<decltype(&T::operator())> {};
 
 template <class T, std::size_t I>
 using argument_of_t = typename function_traits<T>::template argument<I>::type;
+template <class T>
+using result_of_t = typename function_traits<T>::result_type;
+template <class T>
+using class_of_t = typename function_traits<T>::class_type;
 }

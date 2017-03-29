@@ -9,6 +9,7 @@ namespace domains {
 inline namespace v1 {
 using std::experimental::is_signed_v;
 using std::experimental::is_unsigned_v;
+using std::experimental::is_integral_v;
 }
 }
 
@@ -18,6 +19,7 @@ namespace domains {
 inline namespace v2 {
 using std::is_signed_v;
 using std::is_unsigned_v;
+using std::is_integral_v;
 }
 }
 

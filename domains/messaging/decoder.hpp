@@ -4,86 +4,23 @@
 #include <domains/utils/function_traits.hpp>
 
 namespace domains {
-#if 0
-namespace details_ {
-template <class Switch, class... Translators>
-class decoder_impl {
-   using decoded_types = std::tuple<argument_of_t<Translators, 1>...>;
-
-   static_assert(is_unique<as_parameter_pack_t<decoded_types>>::value,
-                 "Ambiguous translation was found in decoder.");
-
-   Switch swtch;
-   decoded_types decoded_objects;
-   single_dispatcher<std::decay_t<Translators>...> decode_dispatcher;
-
-   template <class DomainDispatcher, class EncodedType>
-   class impl final {
-      decoder_impl &d;
-
-      template <class DecodedType>
-      std::error_code decode_and_dispatch(DomainDispatcher &&, EncodedType &&,
-                                          std::false_type) noexcept {
-         return make_error_code(std::errc::not_supported);
-      }
-
-      template <class DecodedType>
-      std::error_code decode_and_dispatch(DomainDispatcher &&domain_dispatcher,
-                                          EncodedType &&encoded_value, std::true_type) {
-         std::error_code error =
-             d.decode_dispatcher(encoded_value, std::get<DecodedType>(d.decoded_objects));
-         if (!error) {
-            error = std::forward<DomainDispatcher>(domain_dispatcher)(
-                std::get<DecodedType>(d.decoded_objects));
-         }
-         return error;
-      }
-
-   public:
-      explicit impl(decoder_impl &_d) noexcept : d{_d} {
-      }
-
-      template <class DecodedType>
-      std::error_code operator()(DomainDispatcher &&domain_dispatcher,
-                                 EncodedType &&encoded_value) {
-         constexpr bool is_safe =
-             is_dispatchable<single_dispatcher<Translators...>, EncodedType, DecodedType>::value &&
-             is_dispatchable<DomainDispatcher, DecodedType>::value;
-         return this->decode_and_dispatch<DecodedType>(
-             std::forward<DomainDispatcher>(domain_dispatcher), encoded_value,
-             std::integral_constant<bool, is_safe>{});
-      }
-   };
-
-public:
-   explicit decoder_impl(Switch &&s, single_dispatcher<Translators...> &&t)
-      : swtch{std::forward<Switch>(s)},
-        decode_dispatcher{std::forward<single_dispatcher<Translators...>>(t)} {
-   }
-
-   template <class DomainDispatcher, class EncodedType>
-   std::error_code operator()(DomainDispatcher &&domain_dispatcher, EncodedType &&encoded_value) {
-      return swtch(std::forward<DomainDispatcher>(domain_dispatcher),
-                   std::forward<EncodedType>(encoded_value),
-                   impl<DomainDispatcher, EncodedType>{*this});
-   }
-};
-}
-
-template <class Switch, class... Translators>
-struct decoder final : details_::decoder_impl<std::decay_t<Switch>, std::decay_t<Translators>...> {
-   using details_::decoder_impl<std::decay_t<Switch>, std::decay_t<Translators>...>::decoder_impl;
-   using details_::decoder_impl<std::decay_t<Switch>, std::decay_t<Translators>...>::operator();
-};
-
-template <class Switch, class... Translators>
-decoder<Switch, Translators...> make_decoder(Switch swtch, Translators &&... translators) noexcept {
-   return {std::move(swtch), make_single_dispatcher(std::forward<Translators>(translators)...)};
-}
-#endif
-
 template <class>
 struct decode_type final {};
+
+constexpr auto null_router = [](auto const &&, auto &&) noexcept -> std::error_code {
+   return {};
+};
+using null_router_t = decltype(null_router);
+
+constexpr auto null_decode_dispatcher = [](auto const &&, auto &) noexcept -> std::error_code {
+   return {};
+};
+using null_decode_dispatcher_t = decltype(null_decode_dispatcher);
+
+constexpr auto null_domain_dispatcher = [](auto const &) noexcept -> std::error_code {
+   return {};
+};
+using null_domain_dispatcher_t = decltype(null_domain_dispatcher);
 
 namespace details_ {
 template <class Router, class DecodeDispatcher, class... DecodedTypes>
@@ -131,7 +68,7 @@ class decoder_impl {
    };
 
 public:
-   explicit decoder_impl(Router &&router, DecodeDispatcher &&decoder)
+   explicit decoder_impl(Router &&router = {}, DecodeDispatcher &&decoder = {})
       : route{std::forward<Router>(router)},
         decode_dispatcher{std::forward<DecodeDispatcher>(decoder)} {
    }
@@ -154,4 +91,7 @@ struct decoder : details_::decoder_impl<std::decay_t<Router>, std::decay_t<Decod
    using base_type_::decoder_impl;
    using base_type_::operator();
 };
+
+template <class... T>
+using null_decoder_t = decoder<null_router_t, null_decode_dispatcher_t, T...>;
 }

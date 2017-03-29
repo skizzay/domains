@@ -14,10 +14,11 @@ namespace domains {
 namespace details_ {
 
 struct buffer_impl {
-   buffer_impl(void *const data, const std::size_t size) noexcept : data_{data},
-                                                                    size_{size},
-                                                                    index_{0},
-                                                                    error_() {
+   buffer_impl(void const *const data, const std::size_t size) noexcept
+       : data_{static_cast<byte *>(const_cast<void *>(data))},
+         size_{size},
+         index_{0},
+         error_() {
       if ((size == 0U) || (data_ == nullptr)) {
          data_ = nullptr;
          size_ = 0U;
@@ -68,8 +69,8 @@ struct buffer_impl {
       return *this;
    }
 
-   void *index_to_memory(const std::size_t index) const noexcept {
-      return static_cast<void *>(&static_cast<unsigned char *>(data_)[index]);
+   byte *index_to_memory(const std::size_t index) const noexcept {
+      return &data_[index];
    }
 
    std::size_t current() const noexcept {
@@ -128,9 +129,8 @@ struct buffer_impl {
       safe_action(num_bytes, current(), [=]() { advance(num_bytes); });
    }
 
-   template <class T>
-   T *as_array(std::size_t const index) const noexcept {
-      return static_cast<T *>(index_to_memory(index));
+   byte *as_array(std::size_t const index) const noexcept {
+      return index_to_memory(index);
    }
 
    bool has_enough_bytes(std::size_t const num_bytes, std::size_t const index) const noexcept {
@@ -159,7 +159,7 @@ struct buffer_impl {
       }
    }
 
-   void *data_;
+   byte *data_;
    std::size_t size_;
    std::size_t index_;
    std::error_code error_;
@@ -172,18 +172,26 @@ class read_buffer final : private details_::buffer_impl {
       read_buffer &buffer;
 
       template <class UnsignedInteger>
-      std::enable_if_t<is_unsigned_v<UnsignedInteger>, UnsignedInteger> to() noexcept {
+      std::enable_if_t<is_unsigned_v<UnsignedInteger> && is_integral_v<UnsignedInteger>,
+                       UnsignedInteger>
+      to() noexcept {
          UnsignedInteger value{};
          buffer.safe_action(sizeof(UnsignedInteger), buffer.current(), [&] {
-            Encoding::decode(value, buffer.as_array<uint8_t const>(buffer.current()));
+            Encoding::decode(value, buffer.as_array(buffer.current()));
             buffer.advance(sizeof(UnsignedInteger));
          });
          return value;
       }
 
       template <class SignedInteger>
-      std::enable_if_t<is_signed_v<SignedInteger>, SignedInteger> to() noexcept {
+      std::enable_if_t<is_signed_v<SignedInteger> && is_integral_v<SignedInteger>, SignedInteger>
+      to() noexcept {
          return this->to<typename std::make_unsigned<SignedInteger>::type>();
+      }
+
+      template <class Enum>
+      std::enable_if_t<std::is_enum<Enum>::value, Enum> to() noexcept {
+         return static_cast<Enum>(this->to<std::underlying_type_t<Enum>>());
       }
 
    public:
@@ -207,9 +215,8 @@ class read_buffer final : private details_::buffer_impl {
       template <class T>
       operator T() const {
          T value{};
-         buffer.safe_action(sizeof(T), index, [&] {
-            Encoding::decode(value, buffer.as_array<uint8_t const>(index));
-         });
+         buffer.safe_action(sizeof(T), index,
+                            [&] { Encoding::decode(value, buffer.as_array(index)); });
          return value;
       }
    };
@@ -280,7 +287,7 @@ public:
    template <class T>
    void write(T const value) noexcept {
       safe_action(sizeof(T), current(), [=] {
-         Encoding::encode(value, as_array<uint8_t>(current()));
+         Encoding::encode(value, as_array(current()));
          advance(sizeof(T));
       });
    }
@@ -294,7 +301,7 @@ public:
 
    template <class T>
    void write_at(T const value, std::size_t const index) noexcept {
-      safe_action(sizeof(T), index, [=] { Encoding::encode(value, as_array<uint8_t>(index)); });
+      safe_action(sizeof(T), index, [=] { Encoding::encode(value, as_array(index)); });
    }
 
    void write_into_at(void const *const source, std::size_t const num_bytes,

@@ -2,11 +2,9 @@
 
 #include <domains/messaging/dispatcher.hpp>
 #include <domains/utils/function_traits.hpp>
+#include <domains/utils/type_provider.hpp>
 
 namespace domains {
-template <class>
-struct decode_type final {};
-
 struct null_router_t final {
    template <class T, class U>
    constexpr std::error_code operator()(T const &&, U &&) const noexcept {
@@ -31,73 +29,53 @@ struct null_domain_dispatcher_t final {
 };
 constexpr null_domain_dispatcher_t null_domain_dispatcher{};
 
-namespace details_ {
-template <class Router, class DecodeDispatcher, class... DecodedTypes>
-class decoder_impl {
-   Router route;
-   std::aligned_union_t<0, DecodedTypes...> decoded_value_holder;
-   DecodeDispatcher decode_dispatcher;
-
-   struct destruct_only final {
-      template <class T>
-      void operator()(T *const t) noexcept {
-         t->~T();
-      }
-   };
-
-   template <class DecodedType>
-   std::unique_ptr<DecodedType, destruct_only> make_object() noexcept {
-      return {new (&decoded_value_holder) DecodedType(), destruct_only{}};
-   }
+template <class Router, class DecodeDispatcher, class TypeProvider>
+class decoder {
+   std::decay_t<Router> route;
+   std::decay_t<DecodeDispatcher> decode;
+   std::decay_t<TypeProvider> type_provider;
 
    template <class DomainDispatcher>
    class impl final {
-      decoder_impl &d;
-      DomainDispatcher &&domain_dispatcher;
+      decoder &d;
+      DomainDispatcher &&dispatch;
 
    public:
-      explicit impl(decoder_impl &d_, DomainDispatcher &&dd_) noexcept : d{d_},
-                                                                         domain_dispatcher{dd_} {
+      explicit impl(decoder &d_, DomainDispatcher &&dd_) noexcept : d{d_}, dispatch{dd_} {
       }
 
       template <class DecodedType, class EncodedType>
-      std::error_code operator()(EncodedType &&encoded_value, decode_type<DecodedType> = {}) {
-         auto decoded_object = d.make_object<DecodedType>();
+      std::error_code decode_and_dispatch(EncodedType &&encoded_value) {
+         auto decoded_object = d.type_provider.template provide<DecodedType>();
          std::error_code error =
-             d.decode_dispatcher(std::forward<EncodedType>(encoded_value), *decoded_object);
+             d.decode(std::forward<EncodedType>(encoded_value), *decoded_object);
          if (!error) {
-            error = domain_dispatcher(*decoded_object);
+            error = dispatch(*decoded_object);
          }
          return error;
       }
    };
 
 public:
-   explicit decoder_impl(Router &&router = {}, DecodeDispatcher &&decoder = {})
-      : route{std::forward<Router>(router)},
-        decode_dispatcher{std::forward<DecodeDispatcher>(decoder)} {
+   decoder() noexcept = default;
+   decoder(Router &&r, DecodeDispatcher &&dd, TypeProvider &&tp)
+      : route(std::move(r)), decode(std::move(dd)), type_provider(std::move(tp)) {
    }
 
    template <class DomainDispatcher, class EncodedType>
    std::error_code operator()(DomainDispatcher &&domain_dispatcher, EncodedType &&encoded_value) {
       return route(
           std::forward<EncodedType>(encoded_value),
-          impl<DomainDispatcher>{*this, std::forward<DomainDispatcher>(domain_dispatcher)});
+          impl<DomainDispatcher>(*this, std::forward<DomainDispatcher>(domain_dispatcher)));
    }
 };
+
+template <class Router, class DecodeDispatcher, class TypeProvider>
+decoder<std::decay_t<Router>, std::decay_t<DecodeDispatcher>, std::decay_t<TypeProvider>>
+make_decoder(Router router, DecodeDispatcher decode_dispatcher, TypeProvider type_provider) {
+   return decoder<std::decay_t<Router>, std::decay_t<DecodeDispatcher>, std::decay_t<TypeProvider>>(
+       std::move(router), std::move(decode_dispatcher), std::move(type_provider));
 }
 
-template <class Router, class DecodeDispatcher, class... DecodedTypes>
-struct decoder : details_::decoder_impl<std::decay_t<Router>, std::decay_t<DecodeDispatcher>,
-                                        std::decay_t<DecodedTypes>...> {
-   static_assert(is_unique_v<parameter_pack<std::decay_t<DecodedTypes>>...>,
-                 "Decoded types must be not list types more than once.");
-   using base_type_ = details_::decoder_impl<std::decay_t<Router>, std::decay_t<DecodeDispatcher>,
-                                             std::decay_t<DecodedTypes>...>;
-   using base_type_::decoder_impl;
-   using base_type_::operator();
-};
-
-template <class... T>
-using null_decoder_t = decoder<null_router_t, null_decode_dispatcher_t, T...>;
+using null_decoder_t = decoder<null_router_t, null_decode_dispatcher_t, null_type_provider_t>;
 }

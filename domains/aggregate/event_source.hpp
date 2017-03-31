@@ -25,8 +25,12 @@ unsigned get_version(Entity const &) noexcept {
 
 template <class Decoder, class Encoder, class EventStore>
 class event_source final {
+   Decoder decode;
+   Encoder encode;
+   EventStore store;
+
 public:
-   explicit event_source(Decoder &&d = {}, Encoder &&e = {}, EventStore &&s = {})
+   event_source(Decoder &&d = {}, Encoder &&e = {}, EventStore &&s = {})
       : decode{std::move(d)}, encode{std::move(e)}, store{std::move(s)} {
    }
 
@@ -52,12 +56,14 @@ public:
    std::error_code put(IdType const id, EventType const &event) noexcept {
       return store.save(id, encode(event));
    }
-
-private:
-   Decoder decode;
-   Encoder encode;
-   EventStore store;
 };
+
+template <class Decoder, class Encoder, class EventStore>
+event_source<std::decay_t<Decoder>, std::decay_t<Encoder>, std::decay_t<EventStore>>
+make_event_source(Decoder &&decode, Encoder &&encode, EventStore &&es) {
+   return {std::forward<Decoder>(decode), std::forward<Encoder>(encode),
+           std::forward<EventStore>(es)};
+}
 
 template <class T>
 struct null_encoder final {
@@ -70,6 +76,6 @@ struct null_encoder final {
 template <class T>
 using null_encoder_t = null_encoder<T>;
 
-template <class T, class... U>
-using null_event_source_t = event_source<null_decoder_t<U...>, null_encoder_t<T>, null_event_store>;
+template <class T>
+using null_event_source_t = event_source<null_decoder_t, null_encoder_t<T>, null_event_store>;
 }

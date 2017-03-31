@@ -12,13 +12,11 @@ using namespace domains;
 using kerchow::picker;
 
 TEST_CASE("Null event source", "[event_source, null_event_source]") {
-   null_event_source_t<int, int> target;
+   null_event_source_t<int> target;
 
-#if 0
    SECTION("does not return an error when saving an event") {
-      REQUIRE(!target.save(picker.pick<uint32_t>(), picker.pick<char>()));
+      REQUIRE(!target.put(picker.pick<uint32_t>(), picker.pick<char>()));
    }
-#endif
 
    SECTION("num_events always returns 0") {
       REQUIRE(target.num_events(picker.pick<uint32_t>()) == std::uint32_t{0U});
@@ -116,16 +114,16 @@ public:
 }
 
 TEST_CASE("Buffered event source", "[event_source, memory_store]") {
-   auto router = [](data const &d, auto &&decode_and_dispatch) noexcept {
+   auto router = [](data const &d, auto &&go) noexcept {
       auto buffer = d.read();
       data_type type = buffer.read();
       switch (type) {
       case data_type::A:
-         return decode_and_dispatch(buffer.subbuffer(), decode_type<A>{});
+         return go.template decode_and_dispatch<A>(buffer.subbuffer());
       case data_type::B:
-         return decode_and_dispatch(buffer.subbuffer(), decode_type<B>{});
+         return go.template decode_and_dispatch<B>(buffer.subbuffer());
       case data_type::C:
-         return decode_and_dispatch(buffer.subbuffer(), decode_type<C>{});
+         return go.template decode_and_dispatch<C>(buffer.subbuffer());
       default:
          return make_error_code(std::errc::not_supported);
       }
@@ -146,16 +144,27 @@ TEST_CASE("Buffered event source", "[event_source, memory_store]") {
           return buff.error();
        });
 
-   using event_store_type = memory_store<std::uint16_t, data>;
-   using decoder_type = decoder<decltype(router), decltype(decode_dispatcher), A, B, C>;
-   event_source<decoder_type, fake_encoder, event_store_type> target(
-       decoder_type{std::move(router), std::move(decode_dispatcher)});
+   auto target =
+       make_event_source(make_decoder(router, decode_dispatcher, multi_type_provider<A, B, C>{}),
+                         fake_encoder{}, memory_store<std::uint16_t, data>{});
    std::uint16_t const id = picker.pick<std::uint16_t>();
    fake_entity entity(id);
 
-   SECTION("abd") {
+   SECTION("builds entity from saved events.") {
       target.put(id, A{1});
       target.build(entity);
       REQUIRE(entity.a() == 1);
+   }
+
+   SECTION("knows how many events were saved for an entity.") {
+      B b;
+      b.a = 1;
+      b.b = 'b';
+      target.put(id, b);
+      b.a = 2;
+      target.put(id, b);
+      target.put(id, A{1});
+      target.put(id, C{"hello"});
+      REQUIRE(target.num_events(id) == 4);
    }
 }

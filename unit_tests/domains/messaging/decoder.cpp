@@ -48,18 +48,18 @@ enum class data_type : uint8_t { A, B, C, D };
 
 struct router {
    template <class F>
-   std::error_code operator()(data const &d, F &&decode_and_dispatch) noexcept {
+   std::error_code operator()(data const &d, F &&dispatcher) noexcept {
       auto buffer = d.read();
       data_type type = buffer.read();
       switch (type) {
       case data_type::B:
-         return decode_and_dispatch(buffer, decode_type<B>{});
+         return dispatcher.template decode_and_dispatch<B>(buffer);
 
       case data_type::C:
-         return decode_and_dispatch(buffer, decode_type<C>{});
+         return dispatcher.template decode_and_dispatch<C>(buffer);
 
       case data_type::D:
-         return decode_and_dispatch(buffer, decode_type<D>{});
+         return dispatcher.template decode_and_dispatch<D>(buffer);
 
       default:
          break;
@@ -116,8 +116,7 @@ TEST_CASE("Decoder", "[decoder]") {
           return std::error_code{};
        },
        [](EncodedType, D &) { return std::error_code{}; });
-   auto target = decoder<router, decltype(decode_dispatcher), B, C, D>{
-       router{}, std::move(decode_dispatcher)};
+   auto target = make_decoder(router(), decode_dispatcher, compact_multi_type_provider<B, C, D>{});
 
    SECTION("can decode concrete types provided") {
       writer << data_type::B;

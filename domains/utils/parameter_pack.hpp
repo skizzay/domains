@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <tuple>
 #include <type_traits>
 
 namespace domains {
@@ -67,6 +68,9 @@ struct in<T, parameter_pack<T, Tail...>> : std::true_type {};
 
 template <class T, class Head, class... Tail>
 struct in<T, parameter_pack<Head, Tail...>> : in<T, parameter_pack<Tail...>> {};
+
+template <class T, class ParameterPack>
+constexpr bool in_v = in<T, ParameterPack>::value;
 
 namespace details_ {
 template <class, class>

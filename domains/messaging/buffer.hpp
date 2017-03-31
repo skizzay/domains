@@ -262,6 +262,25 @@ public:
       safe_action(num_bytes, index,
                   [&] { std::memcpy(destination, index_to_memory(index), num_bytes); });
    }
+
+   read_buffer<Encoding> subbuffer() const noexcept {
+      return {index_to_memory(current()), remaining()};
+   }
+
+   read_buffer<Encoding> subbuffer(std::size_t const start) const noexcept {
+      if (start < size()) {
+         return {index_to_memory(start), size() - start};
+      }
+      return {};
+   }
+
+   read_buffer<Encoding> subbuffer(std::size_t const start, std::size_t const length) const
+       noexcept {
+      if (start < size()) {
+         return {index_to_memory(start), std::min(length, size() - start)};
+      }
+      return {};
+   }
 };
 
 template <class Encoding>

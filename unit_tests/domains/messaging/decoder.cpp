@@ -10,6 +10,7 @@
 
 using namespace domains;
 
+namespace {
 class data {
    std::vector<byte> bytes;
 
@@ -66,6 +67,7 @@ struct router {
       return make_error_code(std::errc::not_supported);
    }
 };
+}
 
 TEST_CASE("Decoder", "[decoder]") {
    using EncodedType = read_buffer<native_endian_encoding>;

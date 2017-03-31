@@ -7,20 +7,29 @@ namespace domains {
 template <class>
 struct decode_type final {};
 
-constexpr auto null_router = [](auto const &&, auto &&) noexcept -> std::error_code {
-   return {};
+struct null_router_t final {
+   template <class T, class U>
+   constexpr std::error_code operator()(T const &&, U &&) const noexcept {
+      return {};
+   }
 };
-using null_router_t = decltype(null_router);
+constexpr null_router_t null_router{};
 
-constexpr auto null_decode_dispatcher = [](auto const &&, auto &) noexcept -> std::error_code {
-   return {};
+struct null_decode_dispatcher_t final {
+   template <class T, class U>
+   constexpr std::error_code operator()(T const &&, U &) const noexcept {
+      return {};
+   }
 };
-using null_decode_dispatcher_t = decltype(null_decode_dispatcher);
+constexpr null_decode_dispatcher_t null_decode_dispatcher{};
 
-constexpr auto null_domain_dispatcher = [](auto const &) noexcept -> std::error_code {
-   return {};
+struct null_domain_dispatcher_t final {
+   template <class T>
+   constexpr std::error_code operator()(T const &) const noexcept {
+      return {};
+   }
 };
-using null_domain_dispatcher_t = decltype(null_domain_dispatcher);
+constexpr null_domain_dispatcher_t null_domain_dispatcher{};
 
 namespace details_ {
 template <class Router, class DecodeDispatcher, class... DecodedTypes>
@@ -31,11 +40,7 @@ class decoder_impl {
 
    struct destruct_only final {
       template <class T>
-      std::enable_if_t<std::is_trivially_destructible<T>::value> operator()(T *const) noexcept {
-      }
-
-      template <class T>
-      std::enable_if_t<!std::is_trivially_destructible<T>::value> operator()(T *const t) noexcept {
+      void operator()(T *const t) noexcept {
          t->~T();
       }
    };
@@ -75,8 +80,9 @@ public:
 
    template <class DomainDispatcher, class EncodedType>
    std::error_code operator()(DomainDispatcher &&domain_dispatcher, EncodedType &&encoded_value) {
-      return route(std::forward<EncodedType>(encoded_value),
-                   impl<DomainDispatcher>{*this, domain_dispatcher});
+      return route(
+          std::forward<EncodedType>(encoded_value),
+          impl<DomainDispatcher>{*this, std::forward<DomainDispatcher>(domain_dispatcher)});
    }
 };
 }

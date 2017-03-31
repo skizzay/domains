@@ -10,6 +10,7 @@
 
 using namespace domains;
 
+namespace {
 struct A {
    virtual std::string name() const = 0;
 };
@@ -25,6 +26,7 @@ struct C : A {
       return "C";
    }
 };
+}
 
 TEST_CASE("Single dispatcher", "[dispatcher]") {
    auto target = make_single_dispatcher(

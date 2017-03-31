@@ -1,6 +1,6 @@
 ADD_EXECUTABLE(aggregate_tests
-   main.cpp
-   event_source.cpp)
+   event_source.cpp
+   main.cpp)
 TARGET_INCLUDE_DIRECTORIES(aggregate_tests PRIVATE
    ${PROJECT_SOURCE_DIR}
    ${CONAN_INCLUDE_DIRS_CATCH})

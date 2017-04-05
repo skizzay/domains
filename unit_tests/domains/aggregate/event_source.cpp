@@ -114,16 +114,16 @@ public:
 }
 
 TEST_CASE("Buffered event source", "[event_source, memory_store]") {
-   auto router = [](data const &d, auto &&go) noexcept {
+   auto router = [](data const &d, auto dispatcher) noexcept {
       auto buffer = d.read();
       data_type type = buffer.read();
       switch (type) {
       case data_type::A:
-         return go.template decode_and_dispatch<A>(buffer.subbuffer());
+         return dispatcher.template decode_and_dispatch<A>(buffer.subbuffer());
       case data_type::B:
-         return go.template decode_and_dispatch<B>(buffer.subbuffer());
+         return dispatcher.template decode_and_dispatch<B>(buffer.subbuffer());
       case data_type::C:
-         return go.template decode_and_dispatch<C>(buffer.subbuffer());
+         return dispatcher.template decode_and_dispatch<C>(buffer.subbuffer());
       default:
          return make_error_code(std::errc::not_supported);
       }
@@ -144,9 +144,10 @@ TEST_CASE("Buffered event source", "[event_source, memory_store]") {
           return buff.error();
        });
 
-   auto target =
-       make_event_source(make_decoder(router, decode_dispatcher, multi_type_provider<A, B, C>{}),
-                         fake_encoder{}, memory_store<std::uint16_t, data>{});
+   auto target = make_event_source(
+       make_decoder(router, make_parsing_translator(decode_dispatcher,
+                                                    compact_multi_type_provider<A, B, C>{})),
+       fake_encoder{}, memory_store<std::uint16_t, data>{});
    std::uint16_t const id = picker.pick<std::uint16_t>();
    fake_entity entity(id);
 

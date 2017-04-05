@@ -116,7 +116,9 @@ TEST_CASE("Decoder", "[decoder]") {
           return std::error_code{};
        },
        [](EncodedType, D &) { return std::error_code{}; });
-   auto target = make_decoder(router(), decode_dispatcher, compact_multi_type_provider<B, C, D>{});
+   auto target =
+       make_decoder(router(), make_parsing_translator(decode_dispatcher,
+                                                      compact_multi_type_provider<B, C, D>{}));
 
    SECTION("can decode concrete types provided") {
       writer << data_type::B;

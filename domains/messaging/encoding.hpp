@@ -1,6 +1,6 @@
 #pragma once
 
-#include <domains/messaging/byte.hpp>
+#include <domains/utils/byte.hpp>
 
 #include <climits>
 #include <cstdint>

@@ -32,3 +32,8 @@ using std::is_base_of_v;
 }
 
 #endif
+
+namespace domains {
+template <template <class...> class F, class... T>
+concept bool as_concept = F<T...>::value;
+}

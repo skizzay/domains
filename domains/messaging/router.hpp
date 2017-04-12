@@ -1,5 +1,7 @@
 #pragma once
 
+#include <system_error>
+
 namespace domains {
 struct null_router_t final {
    template <class T, class U>

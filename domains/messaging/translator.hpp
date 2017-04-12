@@ -19,6 +19,13 @@ class dynamic_casting_translator {
       std::enable_if_t<is_base_of_v<std::decay_t<EncodedType>, std::decay_t<DecodedType>>,
                        std::error_code>
       decode_and_dispatch(EncodedType &&encoded_value) {
+         return dispatch(dynamic_cast<DecodedType &&>(encoded_value));
+      }
+
+      template <class DecodedType, class EncodedType>
+      std::enable_if_t<is_base_of_v<std::decay_t<EncodedType>, std::decay_t<DecodedType>>,
+                       std::error_code>
+      decode_and_dispatch(EncodedType const &encoded_value) {
          return dispatch(dynamic_cast<DecodedType const &>(encoded_value));
       }
    };
@@ -43,6 +50,13 @@ class static_casting_translator {
       std::enable_if_t<is_base_of_v<std::decay_t<EncodedType>, std::decay_t<DecodedType>>,
                        std::error_code>
       decode_and_dispatch(EncodedType &&encoded_value) {
+         return dispatch(static_cast<DecodedType &&>(encoded_value));
+      }
+
+      template <class DecodedType, class EncodedType>
+      std::enable_if_t<is_base_of_v<std::decay_t<EncodedType>, std::decay_t<DecodedType>>,
+                       std::error_code>
+      decode_and_dispatch(EncodedType const &encoded_value) {
          return dispatch(static_cast<DecodedType const &>(encoded_value));
       }
    };

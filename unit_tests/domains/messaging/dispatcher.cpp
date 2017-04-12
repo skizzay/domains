@@ -1,37 +1,19 @@
 #include "domains/messaging/dispatcher.hpp"
+
+#include "unit_tests/domains/messaging/base_fixture.hpp"
 #if __has_include(<catch / catch.hpp>)
 #include <catch/catch.hpp>
 #elif __has_include(<catch.hpp>)
 #include <catch.hpp>
 #endif
 #include <algorithm>
-#include <experimental/string_view>
 #include <iostream>
 
 using namespace domains;
 
-namespace {
-struct A {
-   virtual std::string name() const = 0;
-};
-
-struct B final : A {
-   virtual std::string name() const override {
-      return "B";
-   }
-};
-
-struct C : A {
-   virtual std::string name() const override final {
-      return "C";
-   }
-};
-}
-
 TEST_CASE("Single dispatcher", "[dispatcher]") {
-   auto target = make_single_dispatcher(
-       [](std::experimental::string_view s) { return s.size(); }, [](int i) { return i; },
-       [](A const &a) { return a.name(); }, [](C const &c) { return c.name(); });
+   factory f;
+   auto target = f.make_single_domain_dispatcher();
 
    SECTION("dispatcher knows how to dispatch concrete types") {
       REQUIRE(target("help") == 4);
@@ -39,11 +21,13 @@ TEST_CASE("Single dispatcher", "[dispatcher]") {
    }
 
    SECTION("dispatcher knows how to fallback to base types") {
-      REQUIRE(target(B()) == "B");
+      target(G());
+      REQUIRE(f.a_count == 1);
    }
 
    SECTION("dispatcher knows how to dispatch child types") {
-      REQUIRE(target(C()) == "C");
+      target(E());
+      REQUIRE(f.e_count == 1);
    }
 }
 

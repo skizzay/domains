@@ -7,10 +7,12 @@
 #include <domains/utils/type_traits.hpp>
 
 namespace domains {
+class any;
 namespace details_ {
-
 template <class T>
-concept bool is_svo_eligible = (sizeof(T) <= sizeof(void *)) && (alignof(T) <= alignof(void *));
+concept bool is_any_svo_eligible = (sizeof(T) <= sizeof(void *)) &&
+                                   (alignof(T) <= alignof(void *)) &&
+                                   !is_same_v<std::decay_t<T>, any>;
 }
 
 class any {
@@ -88,20 +90,62 @@ public:
       }
    }
 
-   template <class T, typename std::enable_if<!is_same_v<std::decay_t<T>, any>, bool>::type = true>
-   any(T &&t) requires !details_::is_svo_eligible<T> {
+   any(any &&a) noexcept {
+      if (a.empty()) {
+         benny = nullptr;
+      } else if (a.is_local()) {
+         local = a.local;
+         a.benny = nullptr;
+      } else {
+         benny = a.benny;
+         a.benny = nullptr;
+      }
+   }
+
+   template <class T>
+       any(T &&t) requires !details_::is_any_svo_eligible<T> &&
+       !as_concept<std::is_same, std::decay_t<T>, any> {
       set_benny(new implementation<std::decay_t<T>>(std::forward<T>(t)));
    }
 
-   template <class T, typename std::enable_if<!is_same_v<std::decay_t<T>, any>, bool>::type = true>
-   any(T &&t) noexcept(
-       is_nothrow_constructible_v<implementation<std::decay_t<T>>, decltype(std::forward<T>(t))>)
-       requires details_::is_svo_eligible<T> {
+   template <class T>
+       any(T &&t) noexcept(is_nothrow_constructible_v<implementation<std::decay_t<T>>,
+                                                      decltype(std::forward<T>(t))>)
+           requires details_::is_any_svo_eligible<T> &&
+       !as_concept<std::is_same, std::decay_t<T>, any> {
       new (&local[0]) implementation<std::decay_t<T>>(std::forward<T>(t));
    }
 
    ~any() noexcept {
       destruct();
+   }
+
+   any &operator=(any const &a) {
+      if (this != &a) {
+         destruct();
+
+         if (a.empty()) {
+            benny = nullptr;
+         } else if (a.is_local()) {
+            a.get()->clone(&local[0]);
+         } else {
+            set_benny(a.get()->clone());
+         }
+      }
+      return *this;
+   }
+
+   any &operator=(any &&a) noexcept {
+      clear();
+
+      if (a.is_local()) {
+         local = a.local;
+         a.benny = nullptr;
+      } else {
+         benny = a.benny;
+         a.benny = nullptr;
+      }
+      return *this;
    }
 
    bool empty() const noexcept {

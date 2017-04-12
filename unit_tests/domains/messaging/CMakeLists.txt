@@ -3,7 +3,8 @@ ADD_EXECUTABLE(messaging_tests
    buffer.cpp
    decoder.cpp
    dispatcher.cpp
-   encoding.cpp)
+   encoding.cpp
+   translator.cpp)
 TARGET_INCLUDE_DIRECTORIES(messaging_tests PRIVATE
    ${PROJECT_SOURCE_DIR}
    ${CONAN_INCLUDE_DIRS_CATCH})

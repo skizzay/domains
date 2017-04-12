@@ -1,7 +1,5 @@
 #pragma once
 
-#include <domains/messaging/buffer.hpp>
-#include <domains/utils/memory_resource.hpp>
 #include <domains/utils/parameter_pack.hpp>
 
 #include <experimental/memory_resource>

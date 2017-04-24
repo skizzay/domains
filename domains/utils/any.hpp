@@ -7,15 +7,16 @@
 #include <domains/utils/type_traits.hpp>
 
 namespace domains {
-class any;
+template <size_t SVO_SIZE>
+class basic_any;
 namespace details_ {
-template <class T>
-concept bool is_any_svo_eligible = (sizeof(T) <= sizeof(void *)) &&
-                                   (alignof(T) <= alignof(void *)) &&
-                                   !is_same_v<std::decay_t<T>, any>;
+template <size_t SVO_SIZE, class T>
+concept bool is_any_svo_eligible = (sizeof(T) <= SVO_SIZE) && (alignof(T) <= alignof(void *)) &&
+                                   !is_same_v<std::decay_t<T>, basic_any<SVO_SIZE>>;
 }
 
-class any {
+template <size_t SVO_SIZE>
+class basic_any {
    struct interface {
       virtual ~interface() noexcept {
       }
@@ -76,11 +77,11 @@ class any {
    }
 
 public:
-   any() noexcept {
+   basic_any() noexcept {
       benny = nullptr;
    }
 
-   any(any const &a) {
+   basic_any(basic_any const &a) {
       if (a.empty()) {
          benny = nullptr;
       } else if (a.is_local()) {
@@ -90,7 +91,7 @@ public:
       }
    }
 
-   any(any &&a) noexcept {
+   basic_any(basic_any &&a) noexcept {
       if (a.empty()) {
          benny = nullptr;
       } else if (a.is_local()) {
@@ -103,24 +104,24 @@ public:
    }
 
    template <class T>
-       any(T &&t) requires !details_::is_any_svo_eligible<T> &&
-       !as_concept<std::is_same, std::decay_t<T>, any> {
+       basic_any(T &&t) requires !details_::is_any_svo_eligible<SVO_SIZE, T> &&
+       !as_concept<std::is_same, std::decay_t<T>, basic_any> {
       set_benny(new implementation<std::decay_t<T>>(std::forward<T>(t)));
    }
 
    template <class T>
-       any(T &&t) noexcept(is_nothrow_constructible_v<implementation<std::decay_t<T>>,
-                                                      decltype(std::forward<T>(t))>)
-           requires details_::is_any_svo_eligible<T> &&
-       !as_concept<std::is_same, std::decay_t<T>, any> {
+       basic_any(T &&t) noexcept(is_nothrow_constructible_v<implementation<std::decay_t<T>>,
+                                                            decltype(std::forward<T>(t))>)
+           requires details_::is_any_svo_eligible<SVO_SIZE, T> &&
+       !as_concept<std::is_same, std::decay_t<T>, basic_any> {
       new (&local[0]) implementation<std::decay_t<T>>(std::forward<T>(t));
    }
 
-   ~any() noexcept {
+   ~basic_any() noexcept {
       destruct();
    }
 
-   any &operator=(any const &a) {
+   basic_any &operator=(basic_any const &a) {
       if (this != &a) {
          destruct();
 
@@ -135,7 +136,7 @@ public:
       return *this;
    }
 
-   any &operator=(any &&a) noexcept {
+   basic_any &operator=(basic_any &&a) noexcept {
       clear();
 
       if (a.is_local()) {
@@ -161,32 +162,32 @@ public:
       benny = nullptr;
    }
 
-   friend void swap(any &l, any &r) noexcept {
+   friend void swap(basic_any &l, basic_any &r) noexcept {
       swap(l.local, r.local);
    }
 
    template <class T>
-   friend std::decay_t<T> const *any_cast(any const *a) noexcept {
+   friend std::decay_t<T> const *any_cast(basic_any const *a) noexcept {
       return a != nullptr && a->type() == typeid(std::decay_t<T>)
-                 ? &static_cast<any::implementation<std::decay_t<T>> const *>(a->get())->value
+                 ? &static_cast<basic_any::implementation<std::decay_t<T>> const *>(a->get())->value
                  : nullptr;
    }
 };
 
-template <class T>
-std::decay_t<T> *any_cast(any *a) noexcept {
+template <class T, size_t SVO_SIZE>
+std::decay_t<T> *any_cast(basic_any<SVO_SIZE> *a) noexcept {
    return const_cast<std::decay_t<T> *>(
-       any_cast<std::decay_t<T> const>(const_cast<any const *>(a)));
+       any_cast<std::decay_t<T> const>(const_cast<basic_any<SVO_SIZE> const *>(a)));
 }
 
 struct bad_any_cast : std::bad_cast {
    virtual char const *what() const noexcept {
-      return "Cannot cast to type from any.";
+      return "Cannot cast to type from basic_any.";
    }
 };
 
-template <class T>
-std::decay_t<T> &any_cast(any &a) {
+template <class T, size_t SVO_SIZE>
+std::decay_t<T> &any_cast(basic_any<SVO_SIZE> &a) {
    auto *ptr = any_cast<T>(&a);
    if (ptr == nullptr) {
       throw bad_any_cast();
@@ -194,12 +195,14 @@ std::decay_t<T> &any_cast(any &a) {
    return *ptr;
 }
 
-template <class T>
-std::decay_t<T> const &any_cast(any const &a) {
+template <class T, size_t SVO_SIZE>
+std::decay_t<T> const &any_cast(basic_any<SVO_SIZE> const &a) {
    auto const *const ptr = any_cast<T>(&a);
    if (ptr == nullptr) {
       throw bad_any_cast();
    }
    return *ptr;
 }
+
+using any = basic_any<sizeof(void *)>;
 }

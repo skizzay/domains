@@ -8,9 +8,12 @@ class Domains(ConanFile):
     settings = "os", "compiler", "build_type", "arch"
     generators = "cmake", "txt", "env", "ycm"
     exports = "CMakeLists.txt", "domains/*"
+    #requires = 'range-v3/latest@ericniebler/stable', 'frozen/0.1@serge-sans-paille/testing'
+    requires = 'range-v3/latest@ericniebler/stable'
     dev_requires = 'catch/1.5.0@TyRoXx/stable', 'kerchow/1.0.1@skizzay/stable'
 
     def build(self):
+        self.output.info(str(self.settings.compiler.version))
         cmake = CMake(self.settings)
         self._execute("cmake %s %s %s" % (self.conanfile_directory, cmake.command_line, self._build_tests))
         self._execute("cmake --build %s %s" % (getcwd(), cmake.build_config))

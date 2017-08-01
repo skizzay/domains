@@ -33,20 +33,20 @@ class basic_any {
       explicit implementation(T const &t) noexcept(std::is_nothrow_copy_constructible<T>::value)
          : value{t} {
       }
-      virtual implementation<T> *clone(void *hint) const override {
+      implementation<T> *clone(void *hint) const final {
          if (hint != nullptr) {
             return new (hint) implementation<T>(value);
          }
          return new implementation<T>(value);
       }
-      virtual std::type_info const &type() const noexcept override {
+      std::type_info const &type() const noexcept final {
          return typeid(T);
       }
    };
 
    union {
       interface *benny;
-      std::array<byte, sizeof(void *) * 2> local;
+      std::array<byte, sizeof(void *) + SVO_SIZE> local;
    };
 
    bool is_local() const noexcept {

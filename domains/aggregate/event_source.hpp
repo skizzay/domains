@@ -9,6 +9,11 @@
 
 namespace domains {
 template <class Entity>
+auto get_event_dispatcher(Entity &e) noexcept -> decltype(e.event_dispatcher()) {
+   return e.event_dispatcher();
+}
+
+template <class Entity>
 Entity &get_event_dispatcher(Entity &e) noexcept {
    return e;
 }

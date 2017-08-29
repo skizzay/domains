@@ -31,7 +31,7 @@ TEST_CASE("static cast translator", "[messaging][translator]") {
    size_t c_count = 0;
    size_t d_count = 0;
 
-   auto domain_dispatcher = make_single_dispatcher(
+   auto domain_dispatcher = single_dispatcher(
        [&](A const &) -> std::error_code {
           ++a_count;
           return {};
@@ -87,7 +87,7 @@ TEST_CASE("dynamic cast translator", "[messaging][translator]") {
    size_t c_count = 0;
    size_t d_count = 0;
 
-   auto domain_dispatcher = make_single_dispatcher(
+   auto domain_dispatcher = single_dispatcher(
        [&](A const &) -> std::error_code {
           ++a_count;
           return {};

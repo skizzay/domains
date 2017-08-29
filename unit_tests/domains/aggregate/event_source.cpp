@@ -128,7 +128,7 @@ TEST_CASE("Buffered event source", "[event_source, memory_store]") {
          return make_error_code(std::errc::not_supported);
       }
    };
-   auto decode_dispatcher = make_single_dispatcher(
+   auto decode_dispatcher = single_dispatcher(
        [](read_buffer<native_endian_encoding> buff, A & a) noexcept {
           buff >> a.a;
           return buff.error();
@@ -144,9 +144,8 @@ TEST_CASE("Buffered event source", "[event_source, memory_store]") {
           return buff.error();
        });
 
-   auto target = make_event_source(
-       make_decoder(router, make_parsing_translator(decode_dispatcher,
-                                                    compact_multi_type_provider<A, B, C>{})),
+   event_source target = event_source(
+       decoder(std::move(router), parsing_translator(std::move(decode_dispatcher), compact_multi_type_provider<A, B, C>{})),
        fake_encoder{}, memory_store<std::uint16_t, data>{});
    std::uint16_t const id = picker.pick<std::uint16_t>();
    fake_entity entity(id);

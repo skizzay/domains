@@ -92,7 +92,7 @@ struct factory final {
    size_t e_count = 0;
 
    auto make_single_domain_dispatcher() noexcept {
-      return domains::make_single_dispatcher(
+      return domains::single_dispatcher(
           [this](A const &) noexcept->std::error_code {
              ++a_count;
              return {};
@@ -118,7 +118,7 @@ struct factory final {
    }
 
    auto make_single_primitive_dispatcher() noexcept {
-      return domains::make_single_dispatcher([](std::experimental::string_view s) noexcept
+      return domains::single_dispatcher([](std::experimental::string_view s) noexcept
                                                  ->size_t { return s.size(); },
                                              [](int i) noexcept->int { return i; },
                                              [this](A const &) noexcept->std::error_code {
@@ -145,7 +145,7 @@ struct factory final {
    }
 
    auto make_translator() noexcept {
-      return domains::make_parsing_translator(make_decode_dispatcher(),
+      return domains::parsing_translator(make_decode_dispatcher(),
                                               domains::compact_multi_type_provider<B, C, D, G>{});
    }
 
@@ -173,7 +173,7 @@ struct factory final {
    }
 
    auto make_decoder() noexcept {
-      return domains::make_decoder(make_data_router(), make_translator());
+      return domains::decoder(make_data_router(), make_translator());
    }
 };
 }

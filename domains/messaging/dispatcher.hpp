@@ -6,6 +6,7 @@
 #include <experimental/vector>
 
 #include <algorithm>
+#include <functional>
 #include <memory>
 
 namespace domains {
@@ -86,9 +87,7 @@ struct single_dispatcher final : details_::single_dispatcher_impl<std::decay_t<F
 };
 
 template <class... Fs>
-single_dispatcher<Fs...> make_single_dispatcher(Fs... fs) {
-   return single_dispatcher<Fs...>{std::move(fs)...};
-}
+single_dispatcher(Fs &&...) -> single_dispatcher<std::decay_t<Fs>...>;
 
 namespace details_ {
 template <class Signature>

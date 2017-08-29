@@ -6,6 +6,16 @@
 #include <system_error>
 
 namespace domains {
+
+template<class T>
+concept bool EventStore() {
+   return requires(T &t) {
+      typename T::id_type;
+      typename T::event_type;
+      typename T::size_type;
+   };
+}
+
 namespace details_ {
 template <class EventType>
 std::experimental::pmr::vector<EventType> const &empty_record() noexcept {
@@ -100,7 +110,7 @@ struct null_event_store final {
    }
 
    template <class IdType>
-   std::array<char, 0> get_events(std::uint64_t const, IdType const) const noexcept {
+   std::array<char, 0> get_events(IdType const, std::uint64_t const) const noexcept {
       return {};
    }
 

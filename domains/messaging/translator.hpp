@@ -104,7 +104,7 @@ class parsing_translator {
 
 public:
    parsing_translator() noexcept = default;
-   explicit parsing_translator(DecodeDispatcher &&dd, TypeProvider &&tp) noexcept(
+   explicit parsing_translator(DecodeDispatcher dd, TypeProvider tp) noexcept(
        is_nothrow_move_constructible_v<DecodeDispatcher>
            &&is_nothrow_move_constructible_v<TypeProvider>)
       : decode{std::move(dd)}, type_provider{std::move(tp)} {
@@ -115,13 +115,6 @@ public:
       return impl<std::decay_t<DomainDispatcher>>{*this, dispatcher};
    }
 };
-
-template <class DecodeDispatcher, class TypeProvider>
-parsing_translator<std::decay_t<DecodeDispatcher>, std::decay_t<TypeProvider>>
-make_parsing_translator(DecodeDispatcher decode_dispatcher, TypeProvider type_provider) {
-   return parsing_translator<std::decay_t<DecodeDispatcher>, std::decay_t<TypeProvider>>{
-       std::move(decode_dispatcher), std::move(type_provider)};
-}
 
 using null_translator_t = parsing_translator<null_decode_dispatcher_t, null_type_provider_t>;
 constexpr null_translator_t null_translator;

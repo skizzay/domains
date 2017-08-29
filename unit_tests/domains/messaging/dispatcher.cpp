@@ -38,7 +38,7 @@ TEST_CASE("Multi dispatcher", "[dispatcher]") {
    size_t c_invocations = 0;
    size_t other_invocations = 0;
    multi_dispatcher<void(std::experimental::string_view), void(B const &), void(C const &)> target;
-   target.add_handler(make_single_dispatcher(
+   target.add_handler(single_dispatcher(
        [&](std::experimental::string_view) { ++sv_invocations; },
        [&](A const &) { ++a_invocations; }, [&](C const &) { ++c_invocations; }));
    target.add_handler([&](auto const &) { ++other_invocations; });

@@ -20,7 +20,7 @@ class decoder {
 
 public:
    decoder() noexcept = default;
-   decoder(Router &&r, Translator &&t) : route(std::move(r)), translator(std::move(t)) {
+   decoder(Router r, Translator t) : route(std::move(r)), translator(std::move(t)) {
    }
 
    template <class DomainDispatcher, class EncodedType>
@@ -29,13 +29,6 @@ public:
                    translator.dispatch_to(domain_dispatcher));
    }
 };
-
-template <class Router, class Translator>
-decoder<std::decay_t<Router>, std::decay_t<Translator>> make_decoder(Router router,
-                                                                     Translator translator) {
-   return decoder<std::decay_t<Router>, std::decay_t<Translator>>(std::move(router),
-                                                                  std::move(translator));
-}
 
 using null_decoder_t = decoder<null_router_t, null_translator_t>;
 }

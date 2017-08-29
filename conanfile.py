@@ -9,7 +9,7 @@ class Domains(ConanFile):
     generators = "cmake", "txt", "env", "ycm"
     exports = "CMakeLists.txt", "domains/*"
     #requires = 'range-v3/latest@ericniebler/stable', 'frozen/0.1@serge-sans-paille/testing'
-    requires = 'range-v3/latest@ericniebler/stable'
+    requires = 'range-v3/0.3.0@ericniebler/stable'
     dev_requires = 'catch/1.5.0@TyRoXx/stable', 'kerchow/1.0.1@skizzay/stable'
 
     def build(self):

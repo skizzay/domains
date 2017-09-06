@@ -1,13 +1,14 @@
 #pragma once
 
+#include <functional>
 #include <domains/utils/type_traits.hpp>
 
 namespace domains {
 // Core Concepts
-template <typename T>
-concept bool Same = std::is_same<T, T>::value;
+//template <typename T>
+//concept bool Same = std::is_same<T, T>::value;
 // NOTE: This is probably wrong, but should hopefully fullfil our simple purposes
-template <typename T, typename U>
+template <typename T, typename U=T>
 concept bool Same() {
    return Same<T>() && Same<U>() && std::is_same<T, U>::value && std::is_same<U, T>::value;
 }
@@ -24,66 +25,66 @@ concept bool CommonReference() {
    return requires(T(&t)(), U(&u)()) {
       typename common_reference_t<T, U>;
       typename common_reference_t<U, T>;
-      requires Same<common_reference_t<T, U>, common_reference_t<U, T>>;
+      requires Same<common_reference_t<T, U>, common_reference_t<U, T>>();
       common_reference_t<T, U>(t());
       common_reference_t<T, U>(u());
    };
-   }
+}
 
-   template <typename T, typename U>
-   concept bool Common() {
-      return CommonReference<T, U>() && requires(T(&t)(), U(&u)()) {
-         typename common_type_t<T, U>;
-         typename common_type_t<U, T>;
-         requires Same<common_type_t<T, U>, common_type_t<U, T>>;
-         common_type_t<T, U>(t());
-         common_type_t<T, U>(u());
-         requires CommonReference<std::add_lvalue_reference_t<common_type_t<T, U>>,
-                                  common_reference_t<std::add_lvalue_reference_t<T const>,
-                                                     std::add_lvalue_reference_t<U const>>>();
-      };
-   }
+template <typename T, typename U>
+concept bool Common() {
+   return CommonReference<T, U>() && requires(T(&t)(), U(&u)()) {
+      typename std::common_type_t<T, U>;
+      typename std::common_type_t<U, T>;
+      requires Same<std::common_type_t<T, U>, std::common_type_t<U, T>>();
+      std::common_type_t<T, U>(t());
+      std::common_type_t<T, U>(u());
+      requires CommonReference<std::add_lvalue_reference_t<std::common_type_t<T, U>>,
+                               common_reference_t<std::add_lvalue_reference_t<T const>,
+                                                  std::add_lvalue_reference_t<U const>>>();
+   };
+}
 
-   template <typename T>
-   concept bool Integral = is_integral_v<T>;
+template <typename T>
+concept bool Integral = is_integral_v<T>;
 
-   template <typename T>
-   concept bool SignedIntegral = Integral<T>() && is_signed_v<T>;
+template <typename T>
+concept bool SignedIntegral = Integral<T> && is_signed_v<T>;
 
-   template <typename T>
-   concept bool UnsignedIntegral = Integral<T>() && is_unsigned_v<T>;
+template <typename T>
+concept bool UnsignedIntegral = Integral<T> && is_unsigned_v<T>;
 
-   template <typename T, typename U>
-   concept bool Assignable() {
-      return CommonReference<T const &, U const &>() && requires(T && t, U && t) {
-         { std::forward<T>(t) = std::forward<U>(u) }
-         ->Same<T &>;
-      };
-   }
+template <typename T, typename U>
+concept bool Assignable() {
+   return CommonReference<T const &, U const &>() && requires(T && t, U && u) {
+      { std::forward<T>(t) = std::forward<U>(u) }
+      ->Same<T &>();
+   };
+}
 
-   namespace details_ {
-   template <class T, class U>
-   void swap(T &&t, U &&u) noexcept {
-      using std::swap;
-      swap(std::forward<T>(t), std::forward<U>(u));
-   }
-   }
+namespace details_ {
+template <class T, class U>
+void swap(T &&t, U &&u) noexcept {
+   using std::swap;
+   swap(std::forward<T>(t), std::forward<U>(u));
+}
+}
 
-   template <typename T>
-   concept bool Swappable() {
-      return requires(T && a, T && b) {
-         details_::swap(std::forward<T>(a), std::forward<T>(b));
-      };
-   }
+template <typename T>
+concept bool Swappable() {
+   return requires(T && a, T && b) {
+      details_::swap(std::forward<T>(a), std::forward<T>(b));
+   };
+}
 
-   template <typename T, typename U>
-   concept bool Swappable() {
-      return Swappable<T>() && Swappable<U>() && CommonReference<T const &, U const &>() &&
-             requires(T && t, U && u) {
-         details_::swap(std::forward<T>(t), std::forward<U>(u));
-         details_::swap(std::forward<U>(u), std::forward<T>(t));
-      };
-   }
+template <typename T, typename U>
+concept bool Swappable() {
+   return Swappable<T>() && Swappable<U>() && CommonReference<T const &, U const &>() &&
+          requires(T && t, U && u) {
+      details_::swap(std::forward<T>(t), std::forward<U>(u));
+      details_::swap(std::forward<U>(u), std::forward<T>(t));
+   };
+}
 
 
 // Object Concepts (part 1)
@@ -91,8 +92,8 @@ template<typename T>
 concept bool Destructible() {
    return requires(T t, T const ct, T *p) {
       { t.~T() } noexcept;
-      { &t } -> Same<T *>;
-      { &ct } -> Same<T const *>;
+      { &t } -> Same<T *>();
+      { &ct } -> Same<T const *>();
       delete p;
       delete[] p;
    };
@@ -129,15 +130,15 @@ concept bool DefaultConstructible() {
 
 template <typename T>
 concept bool MoveConstructible() {
-   return Constructible<T, std::remove_cv_t<T> &&>() && ConvertibleTo<std::remove_cv_t<T> &&, T>();
+   return Constructible<T, std::remove_cv_t<T> &&>() && ConvertibleTo<std::remove_cv_t<T> &&, T>;
 }
 
 template <typename T>
 concept bool CopyConstructible() {
    return MoveConstructible<T>() && Constructible<T, std::remove_cv_t<T> const &>() &&
-          ConvertibleTo<std::remove_cv_t<T> &, T>() &&
-          ConvertibleTo<std::remove_cv_t<T> const &, T>() &&
-          ConvertibleTo<std::remove_cv_t<T> const &&, T>();
+          ConvertibleTo<std::remove_cv_t<T> &, T> &&
+          ConvertibleTo<std::remove_cv_t<T> const &, T> &&
+          ConvertibleTo<std::remove_cv_t<T> const &&, T>;
 }
 
 template <typename T>
@@ -164,12 +165,12 @@ concept bool Boolean() {
          { b1 } -> bool;
          bool(!b1);
          { !b1 } -> bool;
-         { b1 && b2 } -> Same<bool>;
-         { b1 && a } -> Same<bool>;
-         { a && b1 } -> Same<bool>;
-         { b1 || b2 } -> Same<bool>;
-         { b1 || a } -> Same<bool>;
-         { a || b1 } -> Same<bool>;
+         { b1 && b2 } -> Same<bool>();
+         { b1 && a } -> Same<bool>();
+         { a && b1 } -> Same<bool>();
+         { b1 || b2 } -> Same<bool>();
+         { b1 || a } -> Same<bool>();
+         { a || b1 } -> Same<bool>();
          { b1 == b2 } -> bool;
          { b1 != b2 } -> bool;
          { b1 == a } -> bool;
@@ -182,14 +183,10 @@ concept bool Boolean() {
 template <typename T, typename U>
 concept bool WeaklyEqualityComparable() {
    return requires(T const &t, U const &u) {
-      { t == u }
-      ->Boolean;
-      { u == t }
-      ->Boolean;
-      { t != u }
-      ->Boolean;
-      { u != t }
-      ->Boolean;
+      { t == u } -> Boolean;
+      { u == t } -> Boolean;
+      { t != u } -> Boolean;
+      { u != t } -> Boolean;
    };
 }
 
@@ -228,22 +225,14 @@ concept bool StrictlyTotallyOrdered() {
           StrictlyTotallyOrdered<std::remove_cv_t<
               std::remove_reference_t<common_reference_t<T const &, U const &>>>>() &&
           EqualityComparable<T, U>() && requires(T const t, U const u) {
-      { t < u }
-      ->Boolean;
-      { t > u }
-      ->Boolean;
-      { t <= u }
-      ->Boolean;
-      { t >= u }
-      ->Boolean;
-      { u < t }
-      ->Boolean;
-      { u > t }
-      ->Boolean;
-      { u <= t }
-      ->Boolean;
-      { u >= t }
-      ->Boolean;
+      { t < u } -> Boolean;
+      { t > u } -> Boolean;
+      { t <= u } -> Boolean;
+      { t >= u } -> Boolean;
+      { u < t } -> Boolean;
+      { u > t } -> Boolean;
+      { u <= t } -> Boolean;
+      { u >= t } -> Boolean;
    };
 }
 
@@ -265,11 +254,11 @@ concept bool Readable() {
       { iter_move(i) }
       ->Same<rvalue_reference_t<I>>;
    }
-   &&CommonReference<reference_t<I>, value_type_t<I> &>() &&
-       CommonReference<reference_t<I>, rvalue_reference_t<I>>() &&
-       CommonReference<rvalue_reference_t<I>, value_type<I> const &>() &&
-       Same<common_reference_t<reference_t<I>, value_type_t<I>>, value_type_t<I>>() &&
-       Same<common_reference_t<rvalue_reference_t<I>, value_type_t<I>>, value_type_t<I>>();
+   && CommonReference<reference_t<I>, value_type_t<I> &> &&
+       CommonReference<reference_t<I>, rvalue_reference_t<I>> &&
+       CommonReference<rvalue_reference_t<I>, value_type_t<I> const &> &&
+       Same<common_reference_t<reference_t<I>, value_type_t<I>>, value_type_t<I>> &&
+       Same<common_reference_t<rvalue_reference_t<I>, value_type_t<I>>, value_type_t<I>>;
 }
 
 template <typename Out, typename In>
@@ -283,7 +272,7 @@ template <typename I>
 concept bool WeaklyIncrementable() {
    return SemiRegular<I>() && requires(I i) {
       typename difference_type_t<I>;
-      requires SignedIntegral<difference_type_t<I>>();
+      requires SignedIntegral<difference_type_t<I>>;
       { ++i }
       ->Same<I &>;
       i++; // Why is this here?
@@ -324,7 +313,7 @@ template <typename I>
 concept bool InputIterator() {
    return Iterator<I>() && Readable<I>() && requires(I i, I const ci) {
       typename iterator_category_t<I>;
-      requires DerivedFrom<iterator_category_t<I>, std::input_iterator_tag>();
+      requires DerivedFrom<iterator_category_t<I>, std::input_iterator_tag>;
       { i++ }
       ->Readable;
       requires Same<value_type_t<I>, value_type_t<decltype(i++)>>;
@@ -335,19 +324,19 @@ concept bool InputIterator() {
 
 template <typename I, typename T>
 concept bool OutputIterator() {
-   return Iterator<I>() && Writable<I, T>();
+   return Iterator<I> && Writable<I, T>;
 }
 
 template <typename I>
 concept bool ForwardIterator() {
-   return InputIterator<I>() && DerivedFrom<iterator_category_t<I>, std::forward_iterator_tag>() &&
-          Incrementable<I>() && Sentinel<I, I>();
+   return InputIterator<I> && DerivedFrom<iterator_category_t<I>, std::forward_iterator_tag> &&
+          Incrementable<I> && Sentinel<I, I>;
 }
 
 template <typename I>
 concept bool BidirectionalIterator() {
-   return ForwardIterator<I>() &&
-          DerivedFrom<iterator_category_t<I>, std::bidirectional_iterator_tag>() && requires(I i) {
+   return ForwardIterator<I> &&
+          DerivedFrom<iterator_category_t<I>, std::bidirectional_iterator_tag> && requires(I i) {
       { --i }
       ->Same<I &>;
       { i-- }
@@ -357,9 +346,9 @@ concept bool BidirectionalIterator() {
 
 template <typename I>
 concept bool RandomAccessIterator() {
-   return BidirectionalIterator<I>() &&
-          DerivedFrom<iterator_category_t<I>, std::random_access_iterator_tag>() &&
-          StrictlyTotallyOrdered<I>() && SizedSentinel<I, I>() &&
+   return BidirectionalIterator<I> &&
+          DerivedFrom<iterator_category_t<I>, std::random_access_iterator_tag> &&
+          StrictlyTotallyOrdered<I> && SizedSentinel<I, I> &&
           requires(I i, I const j, difference_type_t<I> const n) {
       { i += n } ->Same<I &>;
       { j + n } ->Same<I>;
@@ -399,60 +388,62 @@ concept bool SizedRange() {
    };
 }
 
+#if 0
 namespace details_ {
 template <typename T>
 concept bool ContainerLike_() {
-   return Range<T>() && Range<T const>() &&
-          !Same<reference_t<iterator_t<T>>, reference_t<iterator_t<T const>>>();
+   return Range<T> && Range<T const> &&
+          !Same<reference_t<iterator_t<T>>, reference_t<iterator_t<T const>>>;
 }
 
 template <typename T>
 constexpr bool view_predicate_ = true;
 
 template <typename T>
-requires requires {
-   typename enable_view<T>::type;
-}
+struct enable_view {};
+
+template <typename T>
 constexpr bool view_predicate_ = enable_view<T>::type::value;
 
 template <typename T>
-requires !(DerivedFrom<T view_base>() || requires{typename enable_view<T>::type})
+requires !(requires{typename enable_view<T>::type})
 constexpr bool view_predicate_ = false;
 }
 
 template <typename T>
 concept bool View() {
-   return Range<T>() && SemiRegular<T>() && details_::view_predicate_<T>;
+   return Range<T> && SemiRegular<T> && details_::view_predicate_<T>;
 }
+#endif
 
 template <typename T>
 concept bool BoundedRange() {
-   return Range<T>() && Same<iterator_t<T>, sentinel_t<T>>();
+   return Range<T> && Same<iterator_t<T>, sentinel_t<T>>;
 }
 
 template <typename T>
 concept bool InputRange() {
-   return Range<T>() && InputIterator<iterator_t<T>>();
+   return Range<T> && InputIterator<iterator_t<T>>;
 }
 
 template <typename R, typename T>
 concept bool OutputRange() {
-   return Range<T>() && OutputIterator<iterator_t<R>, T>();
+   return Range<T> && OutputIterator<iterator_t<R>, T>;
 }
 
 template <typename T>
 concept bool ForwardRange() {
-   return Range<T>() && ForwardIterator<iterator_t<T>>();
+   return Range<T> && ForwardIterator<iterator_t<T>>;
 }
 
 template <typename T>
 concept bool BidirectionalRange() {
-   return Range<T>() && BidirectionalIterator<iterator_t<T>>();
+   return Range<T> && BidirectionalIterator<iterator_t<T>>;
 }
 
 template <typename T>
 concept bool RandomAccessRange() {
-   return Range<T>() && RandomAccessIterator<iterator_t<T>>();
+   return Range<T> && RandomAccessIterator<iterator_t<T>>;
 }
 
 // Callable Concepts
@@ -467,33 +458,24 @@ template <typename F, typename... Args>
 concept bool RegularInvocable = Invocable<F, Args...>();
 
 template <typename F, typename... Args>
-concept bool Predicate = Invocable<F, Args...>() && Boolean<std::result_of_t<F &(Args...)>>();
+concept bool Predicate = Invocable<F, Args...> && Boolean<std::result_of_t<F &(Args...)>>;
 
-template <typename F, typename T>
-concept bool Relation = Predicate<F, T, T>();
-
-template <typename F, typename T, typename U>
+template <typename F, typename T, typename U=T>
 concept bool Relation() {
-   return Relation<F, T>() && Relation<F, U>() && CommonReference<T const &, U const &>() &&
-          Relation<F, common_reference_t<T const &, U const &>>() && Predicate<F, T, U>() &&
-          Predicate<F, U, T>();
+   return Relation<F, T> && Relation<F, U> && CommonReference<T const &, U const &> &&
+          Relation<F, common_reference_t<T const &, U const &>> && Predicate<F, T, U> &&
+          Predicate<F, U, T>;
 }
 
-template <typename F, typename T>
-concept bool StrictWeakOrder = Relation<F, T>();
-
-template <typename F, typename T, typename U>
-concept bool StrictWeakOrder = Relation<F, T, U>();
+template <typename F, typename T, typename U=T>
+concept bool StrictWeakOrder = Relation<F, T, U>;
 
 template <typename G>
 concept bool UniformRandomNumberGenerator() {
    return requires(G g) {
-      { g() }
-      ->ranges::UnsignedIntegral;
-      { G::min() }
-      ->ranges::Same<std::result_of_t<G &()>>;
-      { G::max() }
-      ->ranges::Same<std::result_of_t<G &()>>;
+      { g() } -> UnsignedIntegral;
+      { G::min() } -> Same<std::result_of_t<G &()>>;
+      { G::max() } -> Same<std::result_of_t<G &()>>;
    };
 }
 }

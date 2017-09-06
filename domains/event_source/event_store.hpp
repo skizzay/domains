@@ -5,14 +5,16 @@
 
 #include <system_error>
 
+#include "domains/event_source/event_stream.hpp"
+
 namespace domains {
 
 template<class T>
 concept bool EventStore() {
-   return requires(T &t) {
+   return requires(T const &tc, T &t) {
       typename T::id_type;
-      typename T::event_type;
-      typename T::size_type;
+      { tc.num_events() } -> UnsignedIntegral;
+      { tc.get_events() } -> EventStream;
    };
 }
 

@@ -1,4 +1,4 @@
-#include <domains/aggregate/event_source.hpp>
+#include <domains/event_source/event_source.hpp>
 #include <domains/messaging/buffer.hpp>
 #include <domains/messaging/decoder.hpp>
 #include <kerchow/kerchow.h>
@@ -70,6 +70,10 @@ public:
 
    std::uint16_t id() const noexcept {
       return id_;
+   }
+
+   unsigned version() const noexcept {
+      return 0U;
    }
 
    int a() const noexcept {

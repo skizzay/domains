@@ -33,6 +33,7 @@ using std::is_base_of_v;
 }
 
 #endif
+#include <utility>
 
 namespace domains {
 template <class T, class U, template <class> class TQual, template <class> class UQual>
@@ -213,6 +214,36 @@ requires _Valid<common_reference_t, T, U> struct common_reference<T, U, V, W...>
 template <class... Ts>
 struct common_reference : details_::common_reference<Ts...> {};
 
+template <class... Ts>
+using common_reference_t = details_::common_reference_t<Ts...>;
+
 template <template <class...> class F, class... T>
 concept bool as_concept = F<T...>::value;
+
+template <typename T>
+using value_type_t = typename T::value_type;
+
+template <typename T>
+using reference_t = typename T::reference;
+
+template <typename T>
+using rvalue_reference_t = typename T::rvalue_reference;
+
+template <typename T>
+using difference_type_t = typename T::difference_type;
+
+template <typename T>
+using size_type_t = typename T::size_type;
+
+template <typename T>
+using iterator_category_t = typename T::iterator_category;
+
+template <typename T>
+using iterator_t = typename T::iterator;
+
+template <typename T>
+using const_iterator_t = typename T::const_iterator;
+
+template <typename T>
+using sentinel_t = decltype(std::end(std::declval<T>()));
 }

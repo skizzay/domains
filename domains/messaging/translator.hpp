@@ -78,8 +78,8 @@ constexpr null_decode_dispatcher_t null_decode_dispatcher{};
 
 template <class DecodeDispatcher, class TypeProvider>
 class parsing_translator {
-   std::decay_t<DecodeDispatcher> decode;
-   std::decay_t<TypeProvider> type_provider;
+   DecodeDispatcher decode;
+   TypeProvider type_provider;
 
    template <class DomainDispatcher>
    class impl final {

@@ -1,6 +1,7 @@
 #pragma once
 
-#include <domains/aggregate/event_store.hpp>
+#include <domains/aggregate/entity.hpp>
+#include <domains/event_source/event_store.hpp>
 #include <domains/messaging/decoder.hpp>
 
 #include <array>
@@ -8,24 +9,12 @@
 #include <system_error>
 
 namespace domains {
-template <class Entity>
 auto get_event_dispatcher(Entity &e) noexcept -> decltype(e.event_dispatcher()) {
    return e.event_dispatcher();
 }
 
-template <class Entity>
 Entity &get_event_dispatcher(Entity &e) noexcept {
    return e;
-}
-
-template <class Entity>
-auto get_version(Entity const &e) noexcept -> decltype(e.version()) {
-   return e.version();
-}
-
-template <class Entity>
-unsigned get_version(Entity const &) noexcept {
-   return 0U;
 }
 
 template <class Decoder, class Encoder, class EventStore>
@@ -46,17 +35,22 @@ public:
       return store.num_events(id);
    }
 
-   template <class Entity>
-   void build(Entity &entity, std::uint64_t const start_event_num) noexcept {
+   void build(Entity &entity) noexcept {
+#if 1
+      auto event_dispatcher = get_event_dispatcher(entity);
+      for (auto const &event : store.get_events(entity.id(), entity.version())) {
+         decode(event_dispatcher, event);
+      }
+#else
+      build(entity, entity.version());
+   }
+
+   void build(Entity &entity, decltype(entity.version()) const start_event_num) noexcept {
       auto event_dispatcher = get_event_dispatcher(entity);
       for (auto const &event : store.get_events(entity.id(), start_event_num)) {
          decode(event_dispatcher, event);
       }
-   }
-
-   template <class Entity>
-   void build(Entity &entity) noexcept {
-      build(entity, get_version(entity));
+#endif
    }
 
    template <class IdType, class EventType>

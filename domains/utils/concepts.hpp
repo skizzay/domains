@@ -478,4 +478,7 @@ concept bool UniformRandomNumberGenerator() {
       { G::max() } -> Same<std::result_of_t<G &()>>;
    };
 }
+
+template <typename T>
+concept bool TimePoint = traits::is_time_point<T>::value;
 }

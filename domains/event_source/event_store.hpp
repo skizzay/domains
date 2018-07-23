@@ -12,9 +12,8 @@ namespace domains {
 template<class T>
 concept bool EventStore() {
    return requires(T const &tc, T &t) {
-      typename T::id_type;
       { tc.num_events() } -> UnsignedIntegral;
-      { tc.get_events() } -> EventStream;
+      { t.get_events() } -> EventStream;
    };
 }
 

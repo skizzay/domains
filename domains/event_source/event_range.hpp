@@ -4,7 +4,7 @@
 
 namespace domains {
 template <typename T>
-concept bool EventRange = InputRange<T> && requires(T t) {
-   { *t.begin() } const noexcept -> Event;
+concept bool EventRange = InputRange<T> && requires(T const t) {
+   requires Event<std::decay_t<decltype(std::begin(t))>>;
 };
 }

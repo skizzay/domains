@@ -33,7 +33,9 @@ using std::is_base_of_v;
 }
 
 #endif
+#include <chrono>
 #include <utility>
+#include "domains/utils/detected.hpp"
 
 namespace domains {
 template <class T, class U, template <class> class TQual, template <class> class UQual>
@@ -246,4 +248,51 @@ using const_iterator_t = typename T::const_iterator;
 
 template <typename T>
 using sentinel_t = decltype(std::end(std::declval<T>()));
+
+namespace traits {
+inline namespace v1 {
+template <typename> struct is_time_point : std::false_type {};
+
+template <typename Clock, typename Duration>
+struct is_time_point<std::chrono::time_point<Clock, Duration>> : std::true_type {};
+
+namespace details_ {
+template<template<class ...> class Trait, class ...Args>
+using unsigned_result = std::conjunction<
+      is_detected<Trait, Args...>,
+      std::is_unsigned<Trait<Args...>>
+   >;
+
+template<class T>
+using version_member_function = decltype(std::declval<T const>().version());
+
+template<class T>
+using unsigned_version = unsigned_result<version_member_function, T>;
+
+template<class T>
+using timestamp_member_function = decltype(std::declval<T const>().timestamp());
+
+template<class T>
+using timestamp = std::conjunction<
+      is_detected<timestamp_member_function, T>,
+      is_time_point<timestamp_member_function<T>>
+   >;
+
+template<class T>
+using sequence_number_member_function = decltype(std::declval<T const >().sequence_number());
+
+template<class T>
+using unsigned_sequence_number = unsigned_result<sequence_number_member_function, T>;
+}
+
+template<class T>
+using id = decltype(std::declval<T const>().id());
+
+template<typename T>
+using entity = std::conjunction<
+      details_::unsigned_version<T>,
+      is_detected<id, T>
+   >;
+}
+}
 }

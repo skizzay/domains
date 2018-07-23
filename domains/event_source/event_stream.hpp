@@ -1,38 +1,36 @@
 #pragma once
 
 #include <system_error>
-#include <domains/aggregate/event.hpp>
+#include <domains/event_source/event_range.hpp>
 
 namespace domains {
 
 template <typename T>
-concept bool EventStream = Range<T>() && requires(T const ct, T t) {
+concept bool EventStream = requires(T const ct, T t) {
    { ct.id() } noexcept/* -> EqualityComparable */;
    { ct.version() } noexcept -> UnsignedIntegral;
-   { ct.bucket_id() } noexcept/* -> EqualityComparable */;
-   { ct.sequence() } noexcept -> UnsignedIntegral;
    { ct.committed_events() } noexcept -> EventRange;
    { ct.uncommitted_events() } noexcept -> EventRange;
+   //{ t.put(Event) } noexcept;
+   { t.clear_changes() } noexcept;
+   { t.commit_changes() } noexcept -> std::error_code;
 };
 
-template <Event EncodedType, EqualityComparable IdType = uint64_t,
-          UnsignedIntegral VersionType = uint32_t, UnsignedIntegral BucketIdType=IdType,
-          UnsignedIntegral SequenceType=VersionType>
+template <EqualityComparable IdType = uint64_t,
+          UnsignedIntegral VersionType = uint32_t, UnsignedIntegral CommitSequenceType=VersionType>
 class event_stream {
    IdType id_;
    VersionType version_;
-   BucketIdType bucket_id_;
-   SequenceType sequence_;
+   CommitSequenceType sequence_;
 
 public:
    using id_type = IdType;
 
    constexpr event_stream(
          IdType const id, VersionType const version,
-         BucketIdType const bucket_id, SequenceType const sequence) noexcept : id_{id},
-                                                    version_{version},
-                                                    bucket_id_{bucket_id},
-                                                    sequence_{sequence} {
+         CommitSequenceType const sequence) noexcept :
+      id_{id}, version_{version}, sequence_{sequence}
+   {
    }
 
    constexpr IdType id() const noexcept {
@@ -41,10 +39,7 @@ public:
    constexpr VersionType version() const noexcept {
       return version_;
    }
-   constexpr BucketIdType bucket_id() const noexcept {
-      return bucket_id_;
-   }
-   constexpr SequenceType sequence() const noexcept {
+   constexpr CommitSequenceType commit_sequence() const noexcept {
       return sequence_;
    }
 #if 0

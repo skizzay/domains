@@ -1,32 +1,17 @@
-from conans import ConanFile, CMake
-from os import getcwd
+from conans import ConanFile
 
-class Domains(ConanFile):
+
+class DomainsConan(ConanFile):
     name = "domains"
     version = "0.0.1"
-    url = "https://github.com/skizzay/domains.git"
-    settings = "os", "compiler", "build_type", "arch"
-    generators = "cmake", "txt", "env", "ycm"
-    exports = "CMakeLists.txt", "domains/*"
-    #requires = 'range-v3/latest@ericniebler/stable', 'frozen/0.1@serge-sans-paille/testing'
-    requires = 'range-v3/0.3.0@ericniebler/stable'
-    dev_requires = 'catch/1.5.0@TyRoXx/stable', 'kerchow/1.0.1@skizzay/stable'
+    license = "MIT"
+    url = "https://github.com/skizzay/domains"
+    description = "Modern C++ library to facilitate CQRS, event sourcing, and CQRS+ES architectures"
+    requires = "fsm/0.0.1@skizzay/stable", "utilz/0.0.3@skizzay/stable"
+    no_copy_source = True
+    exports_sources = "src/*"
+    exports = 'LICENSE', 'README.md'
+    # No settings/options are necessary, this is header only
 
-    def build(self):
-        self.output.info(str(self.settings.compiler.version))
-        cmake = CMake(self.settings)
-        self._execute("cmake %s %s %s" % (self.conanfile_directory, cmake.command_line, self._build_tests))
-        self._execute("cmake --build %s %s" % (getcwd(), cmake.build_config))
-
-        if self.scope.dev:
-            self.run("ctest")
-
-    @property
-    def _build_tests(self):
-        if self.scope.dev:
-            return "-DBUILD_TESTS=1"
-        return ""
-
-    def _execute(self, command):
-        self.output.info(command)
-        self.run(command)
+    def package(self):
+        self.copy("*.h", dst="include", src="src", keep_path=True)

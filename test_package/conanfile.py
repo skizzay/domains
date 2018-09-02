@@ -1,19 +1,24 @@
 from conans import ConanFile, CMake
 import os
 
-# This easily allows to copy the package in other user or channel
-channel = os.getenv("CONAN_CHANNEL", "testing")
-username = os.getenv("CONAN_USERNAME", "skizzay")
-
-class HelloReuseConan(ConanFile):
-   settings = "os", "compiler", "build_type", "arch"
-   requires = "domains/0.0.1@%s/%s" % (username, channel)
+class DomainsTestConan(ConanFile):
    generators = "cmake"
+   build_requires = "catch2/2.2.2@bincrafters/stable", "cmake_installer/3.11.2@conan/stable", "kerchow/2.0.1@skizzay/testing"
+   settings = "cppstd"
+
+   def __init__(self, *args, **kwargs):
+       super().__init__(*args, **kwargs)
+       self._cmake = None
+
+   def configure(self):
+       self.settings.cppstd = 17
 
    def build(self):
-      cmake = CMake(self.settings)
-      self.run('cmake "%s" %s' % (self.conanfile_directory, cmake.command_line))
-      self.run("cmake --build . %s" % cmake.build_config)
+      self._cmake = CMake(self)
+      # Current dir is "test_package/build/<build_id>" and CMakeLists.txt is
+      # in "test_package"
+      self._cmake.configure()
+      self._cmake.build()
 
    def test(self):
-      self.run(os.sep.join([".", "bin", "package_test"]))
+      self._cmake.test()

@@ -12,7 +12,7 @@ class event_stream_provider {
    T t_;
 
 public:
-   using stream_id_type = typename strip_reference_wrapper_t<T>::stream_id_type;
+   using stream_id_type = typename utilz::strip_reference_wrapper_t<T>::stream_id_type;
 
    constexpr event_stream_provider(T &&t) noexcept :
       t_{std::forward<T>(t)}

@@ -11,9 +11,9 @@ class event_stream {
    T t_;
 
 public:
-    using stream_id_type = typename strip_reference_wrapper_t<T>::stream_id_type;
-    using commit_id_type = typename strip_reference_wrapper_t<T>::commit_id_type;
-    using timestamp_type = typename strip_reference_wrapper_t<T>::timestamp_type;
+    using stream_id_type = typename utilz::strip_reference_wrapper_t<T>::stream_id_type;
+    using commit_id_type = typename utilz::strip_reference_wrapper_t<T>::commit_id_type;
+    using timestamp_type = typename utilz::strip_reference_wrapper_t<T>::timestamp_type;
 
     constexpr event_stream(T t) noexcept :
        t_{t}

@@ -29,16 +29,6 @@ struct fake_on_stream_deleted {
    }
 };
 
-template<class ...Ts>
-struct fake_hook : Ts... {
-   constexpr fake_hook(Ts &&...ts) noexcept :
-      Ts{std::forward<Ts>(ts)}...
-   {
-   }
-};
-
-template<class ...Ts>
-fake_hook(Ts &&...) -> fake_hook<Ts...>;
 
 TEST_CASE( "hook::on_commit_attempt", "[unit][hook]" ) {
    SECTION( "returns true if no hooks present" ) {

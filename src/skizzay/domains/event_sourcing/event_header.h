@@ -1,13 +1,13 @@
 #pragma once
 
-#include "skizzay/domains/event_sourcing/traits.h"
+#include "skizzay/domains/event_sourcing/stream_version.h"
 #include <skizzay/utilz/traits.h>
 #include <chrono>
 #include <cstdint>
 
 namespace skizzay::domains::event_sourcing {
 
-template<class StreamIdType, class TimestampType>
+template<class StreamIdType, class StreamVersionIntegral, class TimestampType>
 class event_header {
    static_assert(utilz::equivalent_v<StreamIdType>,
          "StremIdType must be equivalent");
@@ -15,12 +15,12 @@ class event_header {
          "TimestampType must be a std::chrono::time_point");
 
    StreamIdType stream_id_;
-   std::uint32_t stream_version_;
+   basic_stream_version<StreamVersionIntegral> stream_version_;
    TimestampType timestamp_;
 
 public:
    using stream_id_type = StreamIdType;
-   using stream_version_type = std::uint32_t;
+   using stream_version_type = basic_stream_version<StreamVersionIntegral>;
    using timestamp_type = TimestampType;
 
    constexpr event_header(
@@ -41,12 +41,12 @@ public:
       return stream_version_;
    }
 
-   constexpr timestamp_type const &timestamp() const noexcept {
+   constexpr timestamp_type timestamp() const noexcept {
       return timestamp_;
    }
 };
 
-template<class StreamIdType, class TimestampType>
-event_header(StreamIdType, std::uint32_t, TimestampType) -> event_header<StreamIdType, TimestampType>;
+template<class StreamIdType, class StreamVersionIntegral, class TimestampType>
+event_header(StreamIdType, basic_stream_version<StreamVersionIntegral>, TimestampType) -> event_header<StreamIdType, StreamVersionIntegral, TimestampType>;
 
 }

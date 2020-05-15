@@ -35,10 +35,11 @@ private:
          if (current_sequence > max_sequence) {
             break;
          }
-         else if (current_sequence++ >= min_sequence) {
+         else if (current_sequence >= min_sequence) {
             committed_events_.push_back(evt);
-            stream_sequence_ = current_sequence - 1;
+            stream_sequence_ = current_sequence;
          }
+         ++current_sequence;
       }
    }
 

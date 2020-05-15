@@ -1,6 +1,7 @@
 #pragma once
 
 #include "skizzay/domains/event_sourcing/commit.h"
+#include "skizzay/domains/event_sourcing/commit_attempt.h"
 #include "skizzay/domains/event_sourcing/commit_result.h"
 #include "skizzay/domains/event_sourcing/traits.h"
 #include <skizzay/utilz/traits.h>
@@ -39,10 +40,16 @@ class commit_store {
       }
    } storage_;
 
+
+
 public:
    using stream_id_type = typename utilz::strip_reference_wrapper_t<T>::stream_id_type;
+   using stream_version_type = typename utilz::strip_reference_wrapper_t<T>::stream_version_type;
    using commit_id_type = typename utilz::strip_reference_wrapper_t<T>::commit_id_type;
+   using commit_sequence_type = typename utilz::strip_reference_wrapper_t<T>::commit_sequence_type;
    using timestamp_type = typename utilz::strip_reference_wrapper_t<T>::timestamp_type;
+   using commit_header_type = basic_commit_header<stream_id_type, stream_version_type, commit_id_type, commit_sequence_type, timestamp_type>;
+
 #if 0
    using commit_range_type =
       decltype(strip(std::declval<std::add_lvalue_reference_t<T>>()).get_commits(std::declval<stream_id_type const>(), std::uint32_t{}, std::uint32_t{}));
@@ -56,14 +63,14 @@ public:
 
    constexpr auto get_commits(
          stream_id_type const &sid,
-         std::uint32_t const min_sequence=0,
-         std::uint32_t const max_sequence=std::numeric_limits<std::uint32_t>::max()) const {
+         stream_version_type const min_sequence={},
+         stream_version_type const max_sequence=stream_version_type::max()) const {
       return storage_.store().get_commits(sid, min_sequence, max_sequence);
    }
 
    template <class EventRange>
-   constexpr auto put(basic_commit_attempt<stream_id_type, commit_id_type, timestamp_type, EventRange> const &attempt) {
-      using commit_type = basic_commit<stream_id_type, commit_id_type, timestamp_type, decltype(get_empty_range())>;
+   constexpr auto put(basic_commit_attempt<commit_header_type, EventRange> const &attempt) {
+      using commit_type = basic_commit<commit_header_type, decltype(get_empty_range())>;
       commit_type const c{
          storage_.pipeline().on_commit_attempt(attempt)
             ? storage_.store().put(attempt)
@@ -82,5 +89,8 @@ public:
 
 template<class T, class U>
 commit_store(T &&, U &&) -> commit_store<T, U>;
+
+template<class T, class U>
+commit_store(T const &, U &&) -> commit_store<T, U>;
 
 }

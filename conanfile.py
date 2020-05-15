@@ -7,7 +7,7 @@ class DomainsConan(ConanFile):
     license = "MIT"
     url = "https://github.com/skizzay/domains"
     description = "Modern C++ library to facilitate CQRS, event sourcing, and CQRS+ES architectures"
-    requires = "fsm/0.0.1@skizzay/stable", "utilz/0.0.4@skizzay/stable"
+    requires = "fsm/0.0.1@skizzay/stable", "utilz/0.0.5@skizzay/stable"
     no_copy_source = True
     exports_sources = "src/*"
     exports = 'LICENSE', 'README.md'

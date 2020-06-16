@@ -1,5 +1,9 @@
 #pragma once
 
+#include "skizzay/domains/event_sourcing/concepts/tag.h"
+
+#include <skizzay/utilz/traits.h>
+#include <concepts>
 #include <cstdint>
 #include <functional>
 #include <limits>
@@ -7,15 +11,13 @@
 
 namespace skizzay::domains::event_sourcing {
 
-template<class Tag, class T>
+template<concepts::tag Tag, std::unsigned_integral T>
 class basic_sequence {
-    static_assert(std::is_unsigned_v<T> && std::is_integral_v<T> && !std::is_same_v<T, bool>,
-        "T must be an unsigned integer");
-
     T value_;
 
 public:
-    using type = T;
+    using tag_type = Tag;
+    using value_type = T;
 
     constexpr basic_sequence(T const t = {}) noexcept :
         value_{t}
@@ -36,42 +38,52 @@ public:
     constexpr basic_sequence<Tag, T> next() const noexcept {
         return {value_ + 1};
     }
-
-    constexpr bool operator==(basic_sequence<Tag, T> const r) const noexcept {
-        return value() == r.value();
+    
+    constexpr auto operator<=>(basic_sequence<Tag, T> const rhs) const {
+        return this->value() <=> rhs.value();
     }
 
-    constexpr bool operator!=(basic_sequence<Tag, T> const r) const noexcept {
-        return value() != r.value();
+    constexpr bool operator==(basic_sequence<Tag, T> const rhs) const {
+        return this->value() == rhs.value();
     }
 
-    constexpr bool operator< (basic_sequence<Tag, T> const r) const noexcept {
-        return value() < r.value();
-    }
-
-    constexpr bool operator> (basic_sequence<Tag, T> const r) const noexcept {
-        return value() > r.value();
-    }
-
-    constexpr bool operator<=(basic_sequence<Tag, T> const r) const noexcept {
-        return value() <= r.value();
-    }
-
-    constexpr bool operator>=(basic_sequence<Tag, T> const r) const noexcept {
-        return value() >= r.value();
+    constexpr bool operator!=(basic_sequence<Tag, T> const rhs) const {
+        return this->value() != rhs.value();
     }
 };
+
+
+template<std::unsigned_integral T>
+using basic_stream_version = basic_sequence<utilz::tag<struct stream_version_tag>, T>;
+
+
+template<std::unsigned_integral T>
+using basic_commit_sequence = basic_sequence<utilz::tag<struct commit_sequence_tag>, T>;
+
+template<concepts::tag Tag, std::unsigned_integral T>
+inline constexpr basic_sequence<Tag, T> unsequenced = basic_sequence<Tag, T>{};
+
+namespace concepts {
+    template<class T>
+    concept sequence = utilz::is_template_v<T, basic_sequence>;
+
+    template<class T>
+    concept stream_version = utilz::is_template_v<T, basic_sequence> && std::is_same_v<skizzay::utilz::tag<struct skizzay::domains::event_sourcing::stream_version_tag>, typename T::tag_type>;
+
+    template<class T>
+    concept commit_sequence = utilz::is_template_v<T, basic_sequence> && std::is_same_v<skizzay::utilz::tag<struct skizzay::domains::event_sourcing::commit_sequence_tag>, typename T::tag_type>;
+}
 
 }
 
 namespace std {
 
-template<class Tag, class T>
+template<skizzay::domains::event_sourcing::concepts::tag Tag, unsigned_integral T>
 struct hash<skizzay::domains::event_sourcing::basic_sequence<Tag, T>> {
    using argument_type = skizzay::domains::event_sourcing::basic_sequence<Tag, T>;
    using result_type = size_t;
 
-   constexpr size_t operator()(argument_type const arg) const noexcept {
+   constexpr result_type operator()(argument_type const arg) const noexcept {
        return hash<T>{}(arg.value());
    }
 };

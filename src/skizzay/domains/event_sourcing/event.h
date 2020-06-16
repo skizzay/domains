@@ -7,10 +7,15 @@
 
 namespace skizzay::domains::event_sourcing {
 
-template<class EventHeaderType, class ...TagsAndEventData>
+template<concepts::event_header EventHeader, class ...TagsAndEventData>
 using basic_event = utilz::dto<
         utilz::tag<struct basic_event_tag>,
-        std::enable_if_t<utilz::is_template_v<EventHeaderType, event_header>, EventHeaderType>,
+        EventHeader,
         TagsAndEventData...>;
+
+namespace concepts {
+        template<class T>
+        concept event = utilz::is_template_v<T, basic_event>;
+}
 
 }

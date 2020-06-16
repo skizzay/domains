@@ -10,7 +10,7 @@ TEST_CASE( "event_header", "[unit][event_header]" ) {
     using stream_id_type = basic_identifier<skizzay::utilz::tag<struct stream_id_type_tag>, int>;
     using stream_version_type = basic_stream_version<unsigned int>;
     using timestamp_type = std::chrono::high_resolution_clock::time_point;
-    using target_type = event_header<stream_id_type, stream_version_type, timestamp_type>;
+    using target_type = basic_event_header<stream_id_type, stream_version_type, timestamp_type>;
 
     SECTION( "passing in only the stream id sets other settings to 'not set'" ) {
         target_type const target{{}};

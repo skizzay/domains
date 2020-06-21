@@ -16,7 +16,8 @@ using basic_event = utilz::dto<
 
 namespace concepts {
         template<class T>
-        concept event = utilz::is_template_v<T, utilz::dto> && requires {
+        concept event = (utilz::is_template_v<T, utilz::dto> || utilz::inherits_from_template_v<T, utilz::dto>)
+                && requires {
                 0 < utilz::length_v<typename T::tag_types>;
                 std::is_same_v<utilz::at_t<typename T::tag_types, 0>, utilz::tag<skizzay::domains::event_sourcing::basic_event_tag>>;
                 0 < utilz::length_v<typename T::data_types>;

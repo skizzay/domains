@@ -1,5 +1,6 @@
 #pragma once
 
+#include <compare>
 #include <cstddef>
 #include <functional>
 #include <type_traits>
@@ -7,9 +8,9 @@
 namespace skizzay::domains::event_sourcing {
 
 template<class T>
-class result_holder {
-   static_assert(std::is_enum_v<T>, "T must be an enum");
-
+class result_holder
+      requires (std::is_enum_v<T>)
+{
    T t_;
 
 public:
@@ -35,83 +36,16 @@ public:
       return t_;
    }
 
-   constexpr bool operator==(result_holder<T> const other) const noexcept {
-      return t_ == other.t_;
-   }
+   constexpr auto operator<=>(result_holder<T> const &) const noexcept = default;
 
-   constexpr bool operator!=(result_holder<T> const other) const noexcept {
-      return t_ != other.t_;
-   }
-
-   constexpr bool operator<=(result_holder<T> const other) const noexcept {
-      return t_ <= other.t_;
-   }
-
-   constexpr bool operator>=(result_holder<T> const other) const noexcept {
-      return t_ >= other.t_;
-   }
-
-   constexpr bool operator< (result_holder<T> const other) const noexcept {
-      return t_ < other.t_;
-   }
-
-   constexpr bool operator> (result_holder<T> const other) const noexcept {
-      return t_ > other.t_;
-   }
-
-   constexpr bool operator==(T const other) const noexcept {
-      return t_ == other;
-   }
-
-   constexpr bool operator!=(T const other) const noexcept {
-      return t_ != other;
-   }
-
-   constexpr bool operator<=(T const other) const noexcept {
-      return t_ <= other;
-   }
-
-   constexpr bool operator>=(T const other) const noexcept {
-      return t_ >= other;
-   }
-
-   constexpr bool operator< (T const other) const noexcept {
-      return t_ < other;
-   }
-
-   constexpr bool operator> (T const other) const noexcept {
-      return t_ > other;
+   constexpr auto operator<=>(T const t) const noexcept {
+      return result_value() <=> t;
    }
 };
 
 template<class T>
-constexpr bool operator==(T const l, result_holder<T> const r) noexcept {
-   return l == r.result_value();
-}
-
-template<class T>
-constexpr bool operator!=(T const l, result_holder<T> const r) noexcept {
-   return l != r.result_value();
-}
-
-template<class T>
-constexpr bool operator<=(T const l, result_holder<T> const r) noexcept {
-   return l <= r.result_value();
-}
-
-template<class T>
-constexpr bool operator>=(T const l, result_holder<T> const r) noexcept {
-   return l >= r.result_value();
-}
-
-template<class T>
-constexpr bool operator< (T const l, result_holder<T> const r) noexcept {
-   return l < r.result_value();
-}
-
-template<class T>
-constexpr bool operator> (T const l, result_holder<T> const r) noexcept {
-   return l > r.result_value();
+constexpr auto operator<=>(T const l, result_holder<T> const r) noexcept {
+   return l <=> r.result_value();
 }
 
 }

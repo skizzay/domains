@@ -2,6 +2,7 @@
 
 #include "skizzay/domains/event_sourcing/concepts/tag.h"
 #include <skizzay/utilz/traits.h>
+#include <compare>
 
 namespace skizzay::domains::event_sourcing {
 template<concepts::tag Tag, std::totally_ordered T>
@@ -17,17 +18,7 @@ public:
     {
     }
 
-    constexpr auto operator<=>(basic_identifier<Tag, T> const &rhs) const {
-        return this->value() <=> rhs.value();
-    }
-
-    constexpr bool operator==(basic_identifier<Tag, T> const &rhs) const {
-        return this->value() == rhs.value();
-    }
-
-    constexpr bool operator!=(basic_identifier<Tag, T> const &rhs) const {
-        return this->value() != rhs.value();
-    }
+    constexpr auto operator<=>(basic_identifier<Tag, T> const &rhs) const = default;
 
     constexpr value_type const & value() const {
         return value_;

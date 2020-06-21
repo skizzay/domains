@@ -7,11 +7,11 @@ class DomainsConan(ConanFile):
     license = "MIT"
     url = "https://github.com/skizzay/domains"
     description = "Modern C++ library to facilitate CQRS, event sourcing, and CQRS+ES architectures"
-    requires = "fsm/0.0.1@skizzay/stable", "utilz/0.0.5@skizzay/stable"
+    requires = "fsm/0.0.1@skizzay/stable", "utilz/0.0.6@skizzay/stable"
     no_copy_source = True
     exports_sources = "src/*"
     exports = 'LICENSE', 'README.md'
-    settings = 'cppstd', 'build_type'
+    settings = 'compiler', 'build_type'
     build_requires = "catch2/2.2.2@bincrafters/stable", "cmake_installer/3.11.2@conan/stable", "kerchow/2.0.1@skizzay/testing"
 
     def package(self):

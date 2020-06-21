@@ -3,6 +3,7 @@
 #include "skizzay/domains/event_sourcing/concepts/tag.h"
 
 #include <skizzay/utilz/traits.h>
+#include <compare>
 #include <concepts>
 #include <cstdint>
 #include <functional>
@@ -39,17 +40,7 @@ public:
         return {value_ + 1};
     }
     
-    constexpr auto operator<=>(basic_sequence<Tag, T> const rhs) const {
-        return this->value() <=> rhs.value();
-    }
-
-    constexpr bool operator==(basic_sequence<Tag, T> const rhs) const {
-        return this->value() == rhs.value();
-    }
-
-    constexpr bool operator!=(basic_sequence<Tag, T> const rhs) const {
-        return this->value() != rhs.value();
-    }
+    constexpr auto operator<=>(basic_sequence<Tag, T> const &) const = default;
 };
 
 

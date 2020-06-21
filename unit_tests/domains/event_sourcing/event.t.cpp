@@ -30,3 +30,12 @@ TEST_CASE( "event body details", "[unit][event]" ) {
         REQUIRE( body.int_field == target.int_field );
     }
 }
+
+TEST_CASE( "event concepts", "[unit][event][concepts]" ) {
+    SECTION( "target type is an event" ) {
+        REQUIRE( concepts::event<target_type> );
+    }
+    SECTION( "vector of target types is an event range" ) {
+        REQUIRE( concepts::event_range<std::vector<target_type>> );
+    }
+}

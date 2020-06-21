@@ -65,4 +65,21 @@ TEST_CASE( "event concepts", "[unit][event][concepts]" ) {
     SECTION( "vector of specialized types is an event range" ) {
         REQUIRE( concepts::event_range<std::vector<specialized_event>> );
     }
+    SECTION( "target type pointer is an event iterator" ) {
+        REQUIRE( concepts::event_iterator<target_type *> );
+    }
+    SECTION( "specialized type pointer is an event iterator" ) {
+        REQUIRE( concepts::event_iterator<specialized_event *> );
+    }
+
+    SECTION( "event should be polymorphic" ) {
+        struct child_event : specialized_event {};
+        SECTION( "variant of events is an event" ) {
+            using variant_type = std::variant<target_type, specialized_event, child_event>;
+            REQUIRE( concepts::event<variant_type> );
+        }
+        SECTION( "child type of a parent event is an event" ) {
+            REQUIRE( concepts::event<child_event> );
+        }
+    }
 }

@@ -1,8 +1,9 @@
 ADD_EXECUTABLE(event_source_tests
-   event_source.cpp
+   concepts.cpp
+   sequence.cpp
    main.cpp)
 TARGET_INCLUDE_DIRECTORIES(event_source_tests PRIVATE
-   ${PROJECT_SOURCE_DIR}
+   ${PROJECT_SOURCE_DIR}/src/main/cpp
    ${CONAN_INCLUDE_DIRS_CATCH})
 TARGET_LINK_LIBRARIES(event_source_tests PRIVATE
    ${CONAN_LIBS_DIRS_KERCHOW}

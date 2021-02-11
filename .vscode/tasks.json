@@ -1,0 +1,22 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Pull dependencies from conan",
+            "type": "shell",
+            "group": "build",
+            "options": {
+                "cwd": "${workspaceFolder}/build"
+            },
+            "linux": {
+                "command": "${env:HOME}/Templates/basic/bin/conan",
+                "args": [
+                    "install",
+                    "${workspaceFolder}",
+                    "--build=missing"
+                ]
+            },
+            "problemMatcher": []
+        }
+    ]
+}

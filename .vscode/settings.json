@@ -55,7 +55,9 @@
         "string": "cpp",
         "string_view": "cpp",
         "ranges": "cpp",
-        "map": "cpp"
+        "map": "cpp",
+        "set": "cpp",
+        "regex": "cpp"
     },
     "cmake.configureSettings": {
         "BUILD_TESTS": "ON"

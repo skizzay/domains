@@ -3,7 +3,7 @@
         {
             "name": "Linux",
             "includePath": [
-                "${workspaceFolder}/src/main",
+                "${workspaceFolder}/src/main/cpp",
                 "/usr/include/c++/10",
                 "/home/andrew/.conan/data/catch2/2.2.2/bincrafters/stable/package/5ab84d6acfe1f23c4fae0ab88f26e3a396351ac9/include",
                 "/home/andrew/.conan/data/kerchow/2.0.1/skizzay/testing/package/8f8cfae7f684d6bd942044c40e5f43c8a5cdedc2/include",

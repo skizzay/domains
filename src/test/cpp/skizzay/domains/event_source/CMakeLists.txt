@@ -1,5 +1,6 @@
 ADD_EXECUTABLE(event_source_tests
    concepts.cpp
+   event.cpp
    sequence.cpp
    main.cpp)
 TARGET_INCLUDE_DIRECTORIES(event_source_tests PRIVATE

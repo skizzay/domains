@@ -12,7 +12,7 @@ using namespace skizzay::domains::event_source;
 using unsigned_sequenced = sequence<struct unsigned_sequenced_tag, std::make_unsigned_t<std::size_t>>;
 using signed_sequenced = sequence<struct signed_sequenced_tag, std::make_signed_t<std::size_t>>;
 
-TEST_CASE("Sequenced", "[event_source, sequence]") {
+TEST_CASE("Sequence", "[event_source, sequence]") {
     SECTION("default constructed sequences are zero") {
         unsigned_sequenced const us;
         signed_sequenced const ss;

@@ -1,2 +1,2 @@
 ADD_SUBDIRECTORY(skizzay/domains/event_source)
-ADD_TEST(utils_tests bin/utils_tests)
+ADD_TEST(event_source_tests bin/event_source_tests)

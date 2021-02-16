@@ -6,6 +6,7 @@
 * sequenced
 * event
 * event_handler
+* event_dispatcher
 * event_store
 * event_source
 

@@ -1,9 +1,9 @@
 #pragma once
 
-#include <domains/utils/parameter_pack.hpp>
+#include <skizzay/domains/utils/parameter_pack.hpp>
 
-#include <experimental/memory_resource>
-#include <experimental/vector>
+#include <memory_resource>
+#include <vector>
 
 #include <algorithm>
 #include <functional>
@@ -201,19 +201,19 @@ class multi_dispatcher {
    };
    using handler_ptr = std::unique_ptr<handler_type, handler_deleter>;
 
-   std::experimental::pmr::vector<handler_ptr> handlers;
+   std::pmr::vector<handler_ptr> handlers;
 
-   std::experimental::pmr::memory_resource *resource() const noexcept {
+   std::pmr::memory_resource *resource() const noexcept {
       return handlers.get_allocator().resource();
    }
 
 public:
    explicit multi_dispatcher(std::experimental::pmr::memory_resource *resource) noexcept
-       : handlers{resource == nullptr ? std::experimental::pmr::get_default_resource() : resource} {
+       : handlers{resource == nullptr ? std::pmr::get_default_resource() : resource} {
    }
 
    explicit multi_dispatcher() noexcept
-       : multi_dispatcher(std::experimental::pmr::get_default_resource()) {
+       : multi_dispatcher(std::pmr::get_default_resource()) {
    }
 
    // Currently, the signatures must match exactly.  Otherwise, it'll fail to resolve as

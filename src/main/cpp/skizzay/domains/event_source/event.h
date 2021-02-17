@@ -1,11 +1,8 @@
 #pragma once
 
-#include <skizzay/domains/event_source/concepts.h>
-#include <skizzay/domains/event_source/tag_dispatch.h>
-
-#include <skizzay/domains/event_source/concepts.h>
-#include <skizzay/domains/event_source/tag_dispatch.h>
 #include <functional>
+#include <skizzay/domains/event_source/concepts.h>
+#include <skizzay/domains/tag_dispatch.h>
 #include <utility>
 #include <variant>
 
@@ -14,13 +11,11 @@ namespace skizzay::domains::event_source {
 inline namespace event_stream_id_details_ {
 inline constexpr struct event_stream_id_function_ final {
    template <typename E>
-   requires skizzay::domains::event_source::tag_invocable<event_stream_id_function_,
-                                                          E const &> constexpr auto
+   requires skizzay::domains::tag_invocable<event_stream_id_function_, E const &> constexpr auto
    operator()(E const &e) const
-      noexcept(noexcept(skizzay::domains::event_source::tag_invoke(*this,
-                                                                   static_cast<E const &>(e))))
-         -> decltype(skizzay::domains::event_source::tag_invoke(*this, static_cast<E const &>(e))) {
-      return skizzay::domains::event_source::tag_invoke(*this, static_cast<E const &>(e));
+      noexcept(skizzay::domains::nothrow_tag_invocable<event_stream_id_function_, E const &>)
+         -> skizzay::domains::tag_invoke_result_t<event_stream_id_function_, E const &> {
+      return skizzay::domains::tag_invoke(*this, static_cast<E const &>(e));
    }
 
    template <typename E>
@@ -38,13 +33,12 @@ inline constexpr struct event_stream_id_function_ final {
 inline namespace event_stream_sequence_details_ {
 inline constexpr struct event_stream_sequence_function_ final {
    template <typename E>
-   requires skizzay::domains::event_source::tag_invocable<event_stream_sequence_function_,
-                                                          E const &> constexpr auto
+   requires skizzay::domains::tag_invocable<event_stream_sequence_function_,
+                                            E const &> constexpr auto
    operator()(E const &e) const
-      noexcept(noexcept(skizzay::domains::event_source::tag_invoke(*this,
-                                                                   static_cast<E const &>(e))))
-         -> decltype(skizzay::domains::event_source::tag_invoke(*this, static_cast<E const &>(e))) {
-      return skizzay::domains::event_source::tag_invoke(*this, static_cast<E const &>(e));
+      noexcept(skizzay::domains::nothrow_tag_invocable<event_stream_sequence_function_, E const &>)
+         -> skizzay::domains::tag_invoke_result_t<event_stream_sequence_function_, E const &> {
+      return skizzay::domains::tag_invoke(*this, static_cast<E const &>(e));
    }
 
    template <typename E>
@@ -62,13 +56,12 @@ inline constexpr struct event_stream_sequence_function_ final {
 inline namespace event_stream_timestamp_details_ {
 inline constexpr struct event_stream_timestamp_function_ final {
    template <typename E>
-   requires skizzay::domains::event_source::tag_invocable<event_stream_timestamp_function_,
-                                                          E const &> constexpr auto
+   requires skizzay::domains::tag_invocable<event_stream_timestamp_function_,
+                                            E const &> constexpr auto
    operator()(E const &e) const
-      noexcept(noexcept(skizzay::domains::event_source::tag_invoke(*this,
-                                                                   static_cast<E const &>(e))))
-         -> decltype(skizzay::domains::event_source::tag_invoke(*this, static_cast<E const &>(e))) {
-      return skizzay::domains::event_source::tag_invoke(*this, static_cast<E const &>(e));
+      noexcept(noexcept(skizzay::domains::tag_invoke(*this, static_cast<E const &>(e))))
+         -> decltype(skizzay::domains::tag_invoke(*this, static_cast<E const &>(e))) {
+      return skizzay::domains::tag_invoke(*this, static_cast<E const &>(e));
    }
    template <typename E>
    requires requires(E const &e) {
@@ -122,7 +115,7 @@ class tagged_event : public basic_event<StreamIdType, StreamSequenceType, Stream
 namespace concepts {
 
 template <typename T>
-concept event = std::copyable<T> &&requires(T const &t) {
+concept event = std::copyable<T> && requires(T const &t) {
    { skizzay::domains::event_source::event_stream_id(t) }
    ->identifier;
    { skizzay::domains::event_source::event_stream_sequence(t) }
@@ -131,47 +124,95 @@ concept event = std::copyable<T> &&requires(T const &t) {
    ->timestamp;
 };
 
-template <typename H, typename E>
-concept event_handler = event<E> &&std::invocable<H, E const &>;
-
 } // namespace concepts
+
+inline namespace get_dispatchable_event_details_ {
+inline constexpr struct get_dispatchable_event_function_ final {
+   template <typename E>
+   constexpr E const &operator()(E const &e) const noexcept {
+      return e;
+   }
+
+   template <typename E>
+   requires requires (E const &e) {
+      {*e};
+      requires std::invocable<get_dispatchable_event_function_, decltype(*e)>;
+   }
+   constexpr auto operator()(E const &e) const
+      noexcept(std::is_nothrow_invocable_v<get_dispatchable_event_function_, decltype(*e)>) {
+      return std::invoke(*this, *e);
+   }
+
+   template <typename E>
+   requires skizzay::domains::tag_invocable<get_dispatchable_event_function_, E const &>
+   constexpr auto operator()(E const &e) const
+      noexcept(noexcept(skizzay::domains::tag_invoke(*this, e))) {
+      return skizzay::domains::tag_invoke(*this, e);
+   }
+} get_dispatchable_event = {};
+} // namespace get_dispatchable_event_details_
+
+namespace concepts {
+template <typename T>
+concept dispatchable_event = requires (T const &t){
+   {skizzay::domains::event_source::get_dispatchable_event(t)};
+   requires event<std::remove_cvref_t<decltype(skizzay::domains::event_source::get_dispatchable_event(t))>>;
+};
+}
 
 inline namespace dispatch_event_details_ {
 inline constexpr struct dispatch_event_function_ final {
+   template<typename ...T>
+   using variant_t = std::variant<T...>;
+
+   template <typename T>
+   using get_dispatchable_event_result_t =
+      decltype(skizzay::domains::event_source::get_dispatchable_event(std::declval<T const &>()));
+
    template <typename H, typename E>
-   requires tag_invocable<dispatch_event_function_, H, E const &> constexpr auto
+   requires tag_invocable<dispatch_event_function_, H,
+                          get_dispatchable_event_result_t<E> const &> constexpr auto
    operator()(H &&h, E const &e) const
-      noexcept(nothrow_tag_invocable<dispatch_event_function_, H, E const &>) {
-      return skizzay::domains::event_source::tag_invoke(*this, std::forward<H>(h), e);
+      noexcept(nothrow_tag_invocable<dispatch_event_function_, H,
+                                     get_dispatchable_event_result_t<E> const &>) {
+      return skizzay::domains::tag_invoke(
+         *this, std::forward<H>(h), skizzay::domains::event_source::get_dispatchable_event(e));
    }
 
-   template <concepts::event E, concepts::event_handler<E> H>
-   requires std::invocable<H, E const &> constexpr std::invoke_result_t<H, E const &>
-   operator()(H &&h, E const &e) const noexcept(std::is_nothrow_invocable_v<H, E const &>) {
-      return std::invoke(std::forward<H>(h), e);
+   template <typename H, concepts::dispatchable_event E>
+   requires std::invocable<H, get_dispatchable_event_result_t<E> const &> constexpr auto
+   operator()(H &&h, E const &e) const
+      noexcept(std::is_nothrow_invocable_v<H, get_dispatchable_event_result_t<E> const &>) {
+      return std::invoke(std::forward<H>(h),
+                         skizzay::domains::event_source::get_dispatchable_event(e));
    }
 
-   template <typename... E, typename H>
+   template <typename H, typename... E>
    constexpr auto operator()(H &&h, std::variant<E...> const &v) const {
-      return std::visit([this, &h](auto const &e) { return (*this)(std::forward<H>(h), e); }, v);
+      return std::visit(
+         [this, &h](auto const &e) { return std::invoke(*this, std::forward<H>(h), e); }, v);
    }
 
-   template <typename P, typename H>
-   requires requires(H &&h, P const &p) {
-      {std::declval<dispatch_event_function_ const>()(std::forward<H>(h), *p)};
+   template<typename H, typename E>
+   requires requires (E const &e) {
+      {*e};
+      requires std::invocable<dispatch_event_function_, H, decltype(*e)>;
+      requires !concepts::dispatchable_event<E>;
    }
-   constexpr auto operator()(H &&h, P const &p) const
-      noexcept(noexcept(std::declval<dispatch_event_function_ const>()(std::forward<H>(h), *p))) {
-      return (*this)(std::forward<H>(h), *p);
+   constexpr auto operator()(H &&h, E const &e) const {
+      return std::invoke(*this, std::forward<H>(h), *e);
    }
 } dispatch_event = {};
 } // namespace dispatch_event_details_
 
 namespace concepts {
 template <typename H, typename E>
-concept event_dispatcher = requires(H &&h, E const &e){
-   { skizzay::domains::event_source::dispatch_event(std::forward<H>(h), e) };
+concept event_dispatcher = requires(H &&h, E const &e) {
+   {skizzay::domains::event_source::dispatch_event(std::forward<H>(h), e)};
 };
-}
+
+template <typename T>
+concept event_range = std::ranges::range<T> &&event<std::ranges::range_value_t<T>>;
+} // namespace concepts
 
 } // namespace skizzay::domains::event_source

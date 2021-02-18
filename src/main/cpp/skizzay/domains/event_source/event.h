@@ -75,43 +75,6 @@ inline constexpr struct event_stream_timestamp_function_ final {
 } event_stream_timestamp = {};
 } // namespace event_stream_timestamp_details_
 
-template <concepts::identifier StreamIdType, concepts::sequenced StreamSequenceType,
-          concepts::timestamp StreamTimestampType>
-class basic_event {
-   StreamIdType event_stream_id_;
-   StreamSequenceType event_stream_sequence_;
-   StreamTimestampType event_stream_timestamp_;
-
-public:
-   constexpr explicit basic_event(StreamIdType stream_id, StreamSequenceType stream_sequence,
-                                  StreamTimestampType stream_timestamp) noexcept
-      : event_stream_id_{std::move(stream_id)},
-        event_stream_sequence_{std::move(stream_sequence)},
-        event_stream_timestamp_{std::move(stream_timestamp)} {
-   }
-
-   constexpr auto event_stream_id() const
-      noexcept(std::is_nothrow_copy_constructible_v<StreamIdType>) {
-      return event_stream_id_;
-   }
-
-   constexpr auto event_stream_sequence() const
-      noexcept(std::is_nothrow_copy_constructible_v<StreamSequenceType>) {
-      return event_stream_sequence_;
-   }
-
-   constexpr auto event_stream_timestamp() const
-      noexcept(std::is_nothrow_copy_constructible_v<StreamTimestampType>) {
-      return event_stream_timestamp_;
-   }
-};
-
-template <class Tag, concepts::identifier StreamIdType, concepts::sequenced StreamSequenceType,
-          concepts::timestamp StreamTimestampType>
-class tagged_event : public basic_event<StreamIdType, StreamSequenceType, StreamTimestampType> {
-   using basic_event<StreamIdType, StreamSequenceType, StreamTimestampType>::basic_event;
-};
-
 namespace concepts {
 
 template <typename T>
@@ -213,8 +176,49 @@ concept event_dispatcher = requires(H &&h, E const &e) {
 };
 
 template <typename T>
-concept event_range = std::ranges::range<T> &&event<std::ranges::range_value_t<T>>;
+concept event_range = std::ranges::range<T> && event<std::ranges::range_value_t<T>>;
+
+template <typename T>
+concept dispatchable_event_range =
+   std::ranges::range<T> &&dispatchable_event<std::ranges::range_value_t<T>>;
 } // namespace concepts
+
+template <concepts::identifier StreamIdType, concepts::sequenced StreamSequenceType,
+          concepts::timestamp StreamTimestampType>
+class basic_event {
+   StreamIdType event_stream_id_;
+   StreamSequenceType event_stream_sequence_;
+   StreamTimestampType event_stream_timestamp_;
+
+public:
+   constexpr explicit basic_event(StreamIdType stream_id, StreamSequenceType stream_sequence,
+                                  StreamTimestampType stream_timestamp) noexcept
+      : event_stream_id_{std::move(stream_id)},
+        event_stream_sequence_{std::move(stream_sequence)},
+        event_stream_timestamp_{std::move(stream_timestamp)} {
+   }
+
+   constexpr auto event_stream_id() const
+      noexcept(std::is_nothrow_copy_constructible_v<StreamIdType>) {
+      return event_stream_id_;
+   }
+
+   constexpr auto event_stream_sequence() const
+      noexcept(std::is_nothrow_copy_constructible_v<StreamSequenceType>) {
+      return event_stream_sequence_;
+   }
+
+   constexpr auto event_stream_timestamp() const
+      noexcept(std::is_nothrow_copy_constructible_v<StreamTimestampType>) {
+      return event_stream_timestamp_;
+   }
+};
+
+template <class Tag, concepts::identifier StreamIdType, concepts::sequenced StreamSequenceType,
+          concepts::timestamp StreamTimestampType>
+class tagged_event : public basic_event<StreamIdType, StreamSequenceType, StreamTimestampType> {
+   using basic_event<StreamIdType, StreamSequenceType, StreamTimestampType>::basic_event;
+};
 
 template <concepts::dispatchable_event... E>
 struct variant_event : public std::variant<E...> {

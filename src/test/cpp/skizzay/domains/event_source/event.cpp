@@ -93,6 +93,7 @@ TEST_CASE("Event", "[event_source, event]") {
       REQUIRE(concepts::dispatchable_event<customized_test_event const *>);
       REQUIRE(concepts::dispatchable_event<test_event *>);
       REQUIRE(concepts::dispatchable_event<std::unique_ptr<test_event> *>);
+      REQUIRE((concepts::dispatchable_event<variant_event<test_event, customized_test_event>>));
    }
 
    SECTION("Dispatching an event resolves handler") {

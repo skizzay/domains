@@ -12,8 +12,9 @@ using namespace skizzay::domains::event_source;
 
 namespace {
 using test_sequence = sequence<struct test, std::size_t>;
-using test_event =
-   tagged_event<struct test, std::string, test_sequence, std::chrono::steady_clock::time_point>;
+struct test_event : tagged_event<struct test, std::string, test_sequence, std::chrono::steady_clock::time_point> {
+   using tagged_event<struct test, std::string, test_sequence, std::chrono::steady_clock::time_point>::tagged_event;
+};
 
 struct customized_test_event {
    std::string custom_event_stream_id;
@@ -39,17 +40,14 @@ struct custom_event_handler {
    bool handled_test_event = false;
    bool handled_custom_test_event = false;
 
-   void handle(test_event const &) {
-      handled_test_event = true;
-   }
-
-   void handle(customized_test_event const &) {
-      handled_custom_test_event = true;
+   friend inline void tag_invoke(skizzay::domains::tag_t<dispatch_event>, custom_event_handler &h,
+                                 test_event const &) {
+      h.handled_test_event = true;
    }
 
    friend inline void tag_invoke(skizzay::domains::tag_t<dispatch_event>, custom_event_handler &h,
-                                 concepts::event auto const &e) {
-      h.handle(e);
+                                 customized_test_event const &) {
+      h.handled_custom_test_event = true;
    }
 };
 } // namespace
@@ -67,6 +65,8 @@ TEST_CASE("Event", "[event_source, event]") {
 
    SECTION("Customization on tag_invocation for event stream id") {
       REQUIRE(skizzay::domains::event_source::event_stream_id(cte) == "customized");
+      customized_test_event const &ref = cte;
+      REQUIRE(skizzay::domains::event_source::event_stream_id(ref) == "customized");
    }
 
    SECTION("An event should be able to capture event stream sequence") {
@@ -75,6 +75,9 @@ TEST_CASE("Event", "[event_source, event]") {
 
    SECTION("Customization on tag_invocation for event stream sequence") {
       REQUIRE(skizzay::domains::event_source::event_stream_sequence(cte) ==
+              expected_sequence.next());
+      customized_test_event const &ref = cte;
+      REQUIRE(skizzay::domains::event_source::event_stream_sequence(ref) ==
               expected_sequence.next());
    }
 
@@ -85,15 +88,18 @@ TEST_CASE("Event", "[event_source, event]") {
    SECTION("Customization on tag_invocation for event stream timestamp") {
       REQUIRE(skizzay::domains::event_source::event_stream_timestamp(cte) ==
               (expected_timestamp + std::chrono::seconds{1}));
+      customized_test_event const &ref = cte;
+      REQUIRE(skizzay::domains::event_source::event_stream_timestamp(ref) ==
+              (expected_timestamp + std::chrono::seconds{1}));
    }
 
    SECTION("An event is dispatchable") {
-      REQUIRE(concepts::dispatchable_event<test_event>);
-      REQUIRE(concepts::dispatchable_event<customized_test_event const &>);
-      REQUIRE(concepts::dispatchable_event<customized_test_event const *>);
-      REQUIRE(concepts::dispatchable_event<test_event *>);
-      REQUIRE(concepts::dispatchable_event<std::unique_ptr<test_event> *>);
-      REQUIRE((concepts::dispatchable_event<variant_event<test_event, customized_test_event>>));
+      REQUIRE(concepts::event<test_event>);
+      REQUIRE(concepts::event<customized_test_event const &>);
+      REQUIRE(concepts::event<customized_test_event const *>);
+      REQUIRE(concepts::event<test_event *>);
+      REQUIRE(concepts::event<std::unique_ptr<test_event> *>);
+      REQUIRE((concepts::event<variant_event<test_event, customized_test_event>>));
    }
 
    SECTION("Dispatching an event resolves handler") {
@@ -107,7 +113,7 @@ TEST_CASE("Event", "[event_source, event]") {
    SECTION("Dispatching a pointer to an event resolves handler") {
       bool handled = false;
       skizzay::domains::event_source::dispatch_event(
-         [&handled](test_event const &) noexcept { handled = true; }, &te);
+         [&handled](test_event const &) noexcept -> void { handled = true; }, &te);
       REQUIRE(handled);
    }
 
@@ -125,7 +131,7 @@ TEST_CASE("Event", "[event_source, event]") {
 
    SECTION("Dispatching a variant of an event resolves handler") {
       bool handled = false;
-      std::variant<test_event, customized_test_event> const v{cte};
+      variant_event<test_event, customized_test_event> const v{cte};
       skizzay::domains::event_source::dispatch_event(
          [&handled](concepts::event auto const &) noexcept { handled = true; }, v);
       REQUIRE(handled);
@@ -133,7 +139,7 @@ TEST_CASE("Event", "[event_source, event]") {
 
    SECTION("Dispatching a pointer to a variant of an event resolves handler") {
       bool handled = false;
-      std::variant<test_event, customized_test_event> const v{cte};
+      variant_event<test_event, customized_test_event> const v{cte};
       skizzay::domains::event_source::dispatch_event(
          [&handled](concepts::event auto const &) noexcept { handled = true; }, &v);
       REQUIRE(handled);
@@ -141,7 +147,7 @@ TEST_CASE("Event", "[event_source, event]") {
 
    SECTION("Dispatching a variant of event pointers resolves handler") {
       bool handled = false;
-      std::variant<test_event *, customized_test_event const *> const v{&cte};
+      variant_event<test_event *, customized_test_event const *> const v{&cte};
       skizzay::domains::event_source::dispatch_event(
          [&handled](concepts::event auto const &) noexcept { handled = true; }, v);
       REQUIRE(handled);
@@ -149,14 +155,14 @@ TEST_CASE("Event", "[event_source, event]") {
 
    SECTION("CPO for event handler for dispatching a variant of an event resolves handler") {
       custom_event_handler h;
-      std::variant<test_event, customized_test_event> const v{te};
+      variant_event<test_event, customized_test_event> const v{te};
       skizzay::domains::event_source::dispatch_event(h, v);
       REQUIRE(h.handled_test_event);
    }
 
    SECTION("CPO for event handler for dispatching a variant of event pointers resolves handler") {
       custom_event_handler h;
-      std::variant<test_event const *, customized_test_event const *> const v{&cte};
+      variant_event<test_event const *, customized_test_event const *> const v{&cte};
       skizzay::domains::event_source::dispatch_event(h, v);
       REQUIRE(h.handled_custom_test_event);
    }
@@ -164,7 +170,7 @@ TEST_CASE("Event", "[event_source, event]") {
    SECTION(
       "CPO for event handler for dispatching a pointer to a variant of an event resolves handler") {
       custom_event_handler h;
-      std::variant<test_event, customized_test_event> const v{cte};
+      variant_event<test_event, customized_test_event> const v{cte};
       skizzay::domains::event_source::dispatch_event(h, &v);
       REQUIRE(h.handled_custom_test_event);
    }
@@ -172,7 +178,7 @@ TEST_CASE("Event", "[event_source, event]") {
    SECTION(
       "CPO for event handler for dispatching a pointer to a variant of event pointers resolves handler") {
       custom_event_handler h;
-      std::variant<test_event const *, customized_test_event const *> const v{&te};
+      variant_event<test_event const *, customized_test_event const *> const v{&te};
       skizzay::domains::event_source::dispatch_event(h, &v);
       REQUIRE(h.handled_test_event);
    }

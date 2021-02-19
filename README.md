@@ -15,6 +15,5 @@
 * event_stream_id
 * event_stream_sequence
 * event_stream_timestamp
-* get_dispatched_event
 * dispatch_event
 * put_events

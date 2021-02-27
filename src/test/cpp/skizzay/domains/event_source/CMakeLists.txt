@@ -1,4 +1,5 @@
 ADD_EXECUTABLE(event_source_tests
+   commit.cpp
    concepts.cpp
    event.cpp
    sequence.cpp

@@ -37,15 +37,13 @@ constexpr T const & throw_error(std::exception_ptr e) {
 } // namespace details_
 
 
-template <concepts::identifier CommitIdType, concepts::event EventType, typename ErrorType>
+template <concepts::identifier CommitIdType, concepts::event EventType, typename ErrorType=std::exception_ptr>
 struct basic_commit {
    using commit_id_type = CommitIdType;
-   using event_stream_id_type = std::remove_cvref_t<decltype(
-      skizzay::domains::event_source::event_stream_id(std::declval<EventType>()))>;
-   using event_stream_sequence_type = std::remove_cvref_t<decltype(
-      skizzay::domains::event_source::event_stream_sequence(std::declval<EventType>()))>;
-   using commit_timestamp_type = std::remove_cvref_t<decltype(
-      skizzay::domains::event_source::event_stream_timestamp(std::declval<EventType>()))>;
+   using event_type = EventType;
+   using event_stream_id_type = event_stream_id_t<EventType>;
+   using event_stream_sequence_type = event_stream_sequence_t<EventType>;
+   using commit_timestamp_type = event_stream_timestamp_t<EventType>;
    using error_type = ErrorType;
 
    template <std::input_iterator I, std::sentinel_for<I> S>

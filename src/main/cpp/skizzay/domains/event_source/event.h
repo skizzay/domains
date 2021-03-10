@@ -1,6 +1,7 @@
 #pragma once
 
 #include <functional>
+#include <ranges>
 #include <skizzay/domains/event_source/concepts.h>
 #include <skizzay/domains/tag_dispatch.h>
 #include <utility>
@@ -144,6 +145,86 @@ concept event_range = std::ranges::range<T> && event<std::ranges::range_value_t<
 
 } // namespace concepts
 
+namespace details_ {
+
+template<typename, typename=void> struct event_stream_id_type_impl;
+
+template<concepts::event Event>
+struct event_stream_id_type_impl<Event, std::void_t<>> {
+   using type = decltype(skizzay::domains::event_source::event_stream_id(std::declval<Event>()));
+};
+
+template<concepts::event_range EventRange>
+struct event_stream_id_type_impl<EventRange, std::void_t<>> {
+   using type = typename event_stream_id_type_impl<std::ranges::range_value_t<EventRange>>::type;
+};
+
+template<typename T>
+struct event_stream_id_type_impl<T, std::void_t<typename T::event_type>> {
+   using type = typename event_stream_id_type_impl<typename T::event_type>::type;
+};
+
+template<typename, typename=void> struct event_stream_sequence_type_impl;
+
+template<concepts::event Event>
+struct event_stream_sequence_type_impl<Event, std::void_t<>> {
+   using type = decltype(skizzay::domains::event_source::event_stream_sequence(std::declval<Event>()));
+};
+
+template<concepts::event_range EventRange>
+struct event_stream_sequence_type_impl<EventRange, std::void_t<>> {
+   using type = typename event_stream_sequence_type_impl<std::ranges::range_value_t<EventRange>>::type;
+};
+
+template<typename T>
+struct event_stream_sequence_type_impl<T, std::void_t<typename T::event_type>> {
+   using type = typename event_stream_sequence_type_impl<typename T::event_type>::type;
+};
+
+template<typename, typename=void> struct event_stream_timestamp_type_impl;
+
+template<concepts::event Event>
+struct event_stream_timestamp_type_impl<Event, std::void_t<>> {
+   using type = decltype(skizzay::domains::event_source::event_stream_timestamp(std::declval<Event>()));
+};
+
+template<concepts::event_range EventRange>
+struct event_stream_timestamp_type_impl<EventRange, std::void_t<>> : event_stream_timestamp_type_impl<std::ranges::range_value_t<EventRange>> {
+};
+
+template<typename T>
+struct event_stream_timestamp_type_impl<T, std::void_t<typename T::event_type>> : event_stream_timestamp_type_impl<typename T::event_type> {
+};
+
+template<typename,typename=void> struct event_type_impl;
+
+template<concepts::event Event>
+struct event_type_impl<Event, std::void_t<>> {
+   using type = Event;
+};
+
+template<concepts::event_range EventRange>
+struct event_type_impl<EventRange, std::void_t<>> : event_type_impl<std::ranges::range_value_t<EventRange>> {
+};
+
+template<typename T>
+struct event_type_impl<T, std::void_t<typename T::event_type>> : event_type_impl<typename T::event_type> {
+};
+} // namespace details_
+
+template<typename T>
+using event_stream_id_t = typename details_::event_stream_id_type_impl<T>::type;
+
+template<typename T>
+using event_stream_sequence_t = typename details_::event_stream_sequence_type_impl<T>::type;
+
+template<typename T>
+using event_stream_timestamp_t = typename details_::event_stream_timestamp_type_impl<T>::type;
+
+template<typename T>
+using event_t = typename details_::event_type_impl<T>::type;
+
+
 template <concepts::identifier StreamIdType, concepts::sequenced StreamSequenceType,
           concepts::timestamp StreamTimestampType>
 class basic_event {
@@ -156,7 +237,13 @@ public:
                                   StreamTimestampType stream_timestamp) noexcept
       : event_stream_id_{std::move(stream_id)},
         event_stream_sequence_{std::move(stream_sequence)},
-        event_stream_timestamp_{std::move(stream_timestamp)} {
+        event_stream_timestamp_{std::move(stream_timestamp)}
+   {
+   }
+
+   constexpr explicit basic_event(StreamIdType stream_id, StreamSequenceType stream_sequence) noexcept
+      : basic_event{std::move(stream_id), std::move(stream_sequence), {}}
+   {
    }
 
    constexpr auto event_stream_id() const
@@ -184,11 +271,11 @@ class tagged_event : public basic_event<StreamIdType, StreamSequenceType, Stream
 template <concepts::event... E>
 struct variant_event : public std::variant<E...> {
    using event_stream_id_type =
-      std::common_type_t<decltype(skizzay::domains::event_source::event_stream_id(std::declval<E const &>()))...>;
+      std::common_type_t<event_stream_id_t<E>...>;
    using event_stream_sequence_type =
-      std::common_type_t<decltype(skizzay::domains::event_source::event_stream_sequence(std::declval<E const &>()))...>;
+      std::common_type_t<event_stream_sequence_t<E>...>;
    using event_stream_timestamp_type =
-      std::common_type_t<decltype(skizzay::domains::event_source::event_stream_timestamp(std::declval<E const &>()))...>;
+      std::common_type_t<event_stream_timestamp_t<E>...>;
 
    using std::variant<E...>::variant;
 

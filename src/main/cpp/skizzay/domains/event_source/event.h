@@ -93,11 +93,9 @@ inline constexpr struct event_stream_sequence_function_ final {
 inline namespace event_stream_timestamp_details_ {
 inline constexpr struct event_stream_timestamp_function_ final {
    template <typename E>
-   requires skizzay::domains::tag_invocable<event_stream_timestamp_function_,
-                                            E const &> &&
-   concepts::timestamp<skizzay::domains::tag_invoke_result_t<event_stream_timestamp_function_, E const &>>
-   constexpr auto
-   operator()(E const &e) const
+   requires skizzay::domains::tag_invocable<event_stream_timestamp_function_, E const &>
+      && concepts::timestamp<skizzay::domains::tag_invoke_result_t<event_stream_timestamp_function_, E const &>>
+   constexpr auto operator()(E const &e) const
       noexcept(noexcept(skizzay::domains::tag_invoke(*this, static_cast<E const &>(e))))
          -> decltype(skizzay::domains::tag_invoke(*this, static_cast<E const &>(e))) {
       return skizzay::domains::tag_invoke(*this, static_cast<E const &>(e));
@@ -131,42 +129,29 @@ inline constexpr struct event_stream_timestamp_function_ final {
 
 inline namespace with_timestamp_details_ {
 inline constexpr struct with_timestamp_function_ final {
-   template <concepts::event E>
-   using timestamp_t = std::invoke_result_t<decltype(skizzay::domains::event_source::event_stream_timestamp), E const &>;
+   template <typename E>
+   using timestamp_t = std::invoke_result_t<decltype(skizzay::domains::event_source::event_stream_timestamp), E &>;
 
    template <typename E>
-   requires skizzay::domains::tag_invocable<with_timestamp_function_, E const &, timestamp_t<E>> &&
-   concepts::timestamp<skizzay::domains::tag_invoke_result_t<with_timestamp_function_, E const &>>
-   constexpr auto
-   operator()(E const &e) const
-      noexcept(noexcept(skizzay::domains::tag_invoke(*this, static_cast<E const &>(e))))
-         -> decltype(skizzay::domains::tag_invoke(*this, static_cast<E const &>(e))) {
-      return skizzay::domains::tag_invoke(*this, static_cast<E const &>(e));
-   }
-   template <typename E>
-   requires requires(E const &e) {
-      { e.event_stream_timestamp() }
-      ->concepts::timestamp;
-   }
-   constexpr auto operator()(E const &e) const noexcept(noexcept(e.event_stream_timestamp()))
-      -> decltype(e.event_stream_timestamp()) {
-      return e.event_stream_timestamp();
+   requires skizzay::domains::tag_invocable<with_timestamp_function_, E &, timestamp_t<E>>
+      && concepts::timestamp<timestamp_t<E>>
+   constexpr auto operator()(E &e, timestamp_t<E> t) const
+      noexcept(skizzay::domains::nothrow_tag_invocable<with_timestamp_function_, E &, timestamp_t<E>>)
+         -> skizzay::domains::tag_invoke_result_t<with_timestamp_function_, E &, timestamp_t<E>> {
+      return skizzay::domains::tag_invoke(*this, static_cast<E &>(e), t);
    }
 
    template <typename E>
-   requires requires(E const &e) {
-      {*e};
-      requires std::invocable<event_stream_timestamp_function_, decltype(*e)>;
-      requires concepts::timestamp<
-         std::invoke_result_t<event_stream_timestamp_function_, decltype(*e)>>;
-      requires !skizzay::domains::tag_invocable<event_stream_timestamp_function_, E const &>;
+   requires (!skizzay::domains::tag_invocable<with_timestamp_function_, E &, timestamp_t<E>>)
+      && concepts::timestamp<timestamp_t<E>>
+      && requires(E &e, timestamp_t<E> t) {
+         { e.with_timestamp(t) };
+      }
+   constexpr auto operator()(E &e, timestamp_t<E> t) const
+      noexcept(noexcept(e.with_timestamp(t))) -> decltype(e.with_timestamp(t)) {
+      return e.with_timestamp(t);
    }
-   constexpr auto operator()(E const &e) const noexcept(
-      noexcept(std::is_nothrow_invocable_v<event_stream_timestamp_function_, decltype(*e)>))
-      -> std::invoke_result_t<event_stream_timestamp_function_, decltype(*e)> {
-      return std::invoke(*this, *e);
-   }
-} event_stream_timestamp = {};
+} with_timestamp = {};
 } // namespace event_stream_timestamp_details_
 
 namespace concepts {
@@ -318,7 +303,7 @@ class tagged_event : public basic_event<StreamIdType, StreamSequenceType, Stream
    using basic_event<StreamIdType, StreamSequenceType, StreamTimestampType>::basic_event;
 
    constexpr tagged_event with_timestamp(StreamTimestampType stream_timestamp) const noexcept {
-      return {event_stream_id_, event_stream_sequence_, std::move(stream_timestamp)};
+      return {this->event_stream_id(), this->event_stream_sequence(), std::move(stream_timestamp)};
    }
 
    constexpr tagged_event &with_timestamp(StreamTimestampType stream_timestamp) noexcept {
@@ -375,7 +360,7 @@ struct variant_event : public std::variant<E...> {
 
    constexpr variant_event & with_timestamp(event_stream_timestamp_type stream_timestamp) {
       return std::visit(
-         [stream_timestamp=std::move(stream_timestamp)] (concepts::event auto &e) {
+         [stream_timestamp=std::move(stream_timestamp), this] (concepts::event auto &e) {
             skizzay::domains::event_source::with_timestamp(e, std::move(stream_timestamp));
             return *this;
          },

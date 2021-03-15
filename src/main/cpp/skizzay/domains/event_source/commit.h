@@ -25,14 +25,19 @@ concept commit = requires(T const &t) {
 
 
 namespace details_ {
-template <typename T>
-constexpr T const & throw_error(std::error_code e) {
+template <typename Sequence>
+constexpr std::tuple<Sequence, Sequence> sequence_range(std::error_code const &e) {
    throw std::system_error(std::move(e));
 }
 
-template <typename T>
-constexpr T const & throw_error(std::exception_ptr e) {
+template <typename Sequence>
+constexpr std::tuple<Sequence, Sequence> sequence_range(std::exception_ptr const &e) {
    std::rethrow_exception(e);
+}
+
+template <typename Sequence>
+constexpr std::tuple<Sequence, Sequence> sequence_range(std::tuple<Sequence, Sequence> const &range) {
+   return range;
 }
 } // namespace details_
 
@@ -85,7 +90,7 @@ struct basic_commit {
    }
 
    constexpr event_stream_id_type event_stream_id() const {
-      return event_stream_id_type event_stream_id_;
+      return event_stream_id_;
    }
 
    constexpr event_stream_sequence_type event_stream_starting_sequence() const {
@@ -101,20 +106,13 @@ struct basic_commit {
    }
 
 private:
-   std::tuple<Sequence, Sequence> const &sequence_range() const {
-      return std::visit([](auto const &value) {
-         if constexpr (std::same_as<std::remove_cvref_t<decltype(value)>, error_type>) {
-            details_::throw_error(value);
-         }
-         else {
-            return value;
-         }
-      }, value_);
+   std::tuple<Sequence, Sequence> sequence_range() const {
+      return std::visit([](auto const &value) { return details_::sequence_range<event_stream_sequence_type>(value); }, value_);
    }
 
    commit_id_type commit_id_;
-   commit_timestamp_type commit_timestamp_;
    event_stream_id_type event_stream_id_;
+   commit_timestamp_type commit_timestamp_;
    std::variant<std::tuple<Sequence, Sequence>, error_type> value_;
 };
 }

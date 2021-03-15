@@ -18,7 +18,7 @@ concept commit = requires(T const &t) {
    { t.commit_timestamp() } -> timestamp;
    { t.event_stream_id() }->identifier;
    { t.event_stream_starting_sequence() }->sequenced;
-   { t.events() }->event_range;
+   { t.event_stream_ending_sequence() }->sequenced;
    { t.error() }->std::same_as<std::optional<typename T::error_type>>;
 };
 } // namespace concepts
@@ -37,33 +37,38 @@ constexpr T const & throw_error(std::exception_ptr e) {
 } // namespace details_
 
 
-template <concepts::identifier CommitIdType, concepts::event EventType, typename ErrorType=std::exception_ptr>
+template <concepts::identifier CommitIdType, concepts::identifier EventStreamIdType, concepts::sequenced Sequence, concepts::timestamp Timestamp, typename ErrorType=std::exception_ptr>
 struct basic_commit {
    using commit_id_type = CommitIdType;
-   using event_type = EventType;
-   using event_stream_id_type = event_stream_id_t<EventType>;
-   using event_stream_sequence_type = event_stream_sequence_t<EventType>;
-   using commit_timestamp_type = event_stream_timestamp_t<EventType>;
+   using event_stream_id_type = EventStreamIdType;
+   using event_stream_sequence_type = Sequence;
+   using commit_timestamp_type = Timestamp;
    using error_type = ErrorType;
 
-   template <std::input_iterator I, std::sentinel_for<I> S>
-   constexpr explicit basic_commit(commit_id_type commit_id, I begin, S end, std::pmr::polymorphic_allocator<EventType> allocator={})
-      : commit_id_{std::move(commit_id)},
-         commit_timestamp_{skizzay::domains::event_source::event_stream_timestamp(*begin)},
-         value_{std::in_place_type<std::pmr::vector<EventType>>, begin, end, std::move(allocator)} {
+   constexpr explicit basic_commit(
+      commit_id_type commit_id,
+      event_stream_id_type event_stream_id,
+      Timestamp commit_timestamp,
+      Sequence start,
+      Sequence end
+   ) noexcept :
+      commit_id_{std::move(commit_id)},
+      event_stream_id_{std::move(event_stream_id)},
+      commit_timestamp_{std::move(commit_timestamp)},
+      value_{std::in_place_index<0>, start, end}
+   {
    }
 
-   template <typename R>
-   requires concepts::event_range<R> &&
-      std::ranges::input_range<R> constexpr explicit basic_commit(
-         commit_id_type commit_id, R events, std::pmr::polymorphic_allocator<EventType> allocator={})
-      : basic_commit{std::move(commit_id), std::ranges::begin(events), std::ranges::end(events), std::move(allocator)} {
-   }
-
-   constexpr basic_commit(commit_id_type commit_id, commit_timestamp_type commit_timestamp, error_type e)
-      : commit_id_{std::move(commit_id)},
-         commit_timestamp_{std::move(commit_timestamp)},
-         value_{std::in_place_type<error_type>, std::move(e)}
+   constexpr explicit basic_commit(
+      commit_id_type commit_id,
+      event_stream_id_type event_stream_id,
+      Timestamp commit_timestamp,
+      error_type error
+   ) noexcept :
+      commit_id_{std::move(commit_id)},
+      event_stream_id_{std::move(event_stream_id)},
+      commit_timestamp_{std::move(commit_timestamp)},
+      value_{std::in_place_index<1>, std::move(error)}
    {
    }
 
@@ -80,16 +85,15 @@ struct basic_commit {
    }
 
    constexpr event_stream_id_type event_stream_id() const {
-      return skizzay::domains::event_source::event_stream_id(events().front());
+      return event_stream_id_type event_stream_id_;
    }
 
    constexpr event_stream_sequence_type event_stream_starting_sequence() const {
-      return skizzay::domains::event_source::event_stream_sequence(events().front());
+      return std::get<0>(sequence_range());
    }
 
-   constexpr std::pmr::vector<EventType> const & events() const {
-      return is_error() ? details_::throw_error<std::pmr::vector<EventType>>(std::get<1>(value_))
-                        : std::get<0>(value_);
+   constexpr event_stream_sequence_type event_stream_ending_sequence() const {
+      return std::get<1>(sequence_range());
    }
 
    constexpr std::optional<ErrorType> error() const noexcept {
@@ -97,8 +101,20 @@ struct basic_commit {
    }
 
 private:
+   std::tuple<Sequence, Sequence> const &sequence_range() const {
+      return std::visit([](auto const &value) {
+         if constexpr (std::same_as<std::remove_cvref_t<decltype(value)>, error_type>) {
+            details_::throw_error(value);
+         }
+         else {
+            return value;
+         }
+      }, value_);
+   }
+
    commit_id_type commit_id_;
    commit_timestamp_type commit_timestamp_;
-   std::variant<std::pmr::vector<EventType>, error_type> value_;
+   event_stream_id_type event_stream_id_;
+   std::variant<std::tuple<Sequence, Sequence>, error_type> value_;
 };
 }

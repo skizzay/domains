@@ -45,44 +45,20 @@ struct event_stream_state : std::enable_shared_from_this<event_stream_state<Even
    }
 };
 
-template<typename StreamId, typename Sequence, typename Timestamp>
-struct validate_and_apply_timestamp {
-   StreamId event_stream_id_;
-   Sequence last_seen_sequence_;
-   Timestamp event_timestamp_;
-
-   template<typename Event>
-      requires concepts::event<Event>
-         && std::is_same_v<Timestamp, event_stream_timestamp_t<Event>>
-         && std::is_same_v<Sequence, event_stream_sequence_t<Event>>
-   decltype(auto) operator()(Event &e) const {
-      if (skizzay::domains::event_source::event_stream_id(e) != event_stream_id_) {
-         throw std::invalid_argument{"Event stream id does match within the event itself"};
-      }
-      else if (skizzay::domains::event_source::event_stream_sequence(e) != last_seen_sequence_.next()) {
-         throw concurrency_collision{"Expected event stream sequence was not found"};
-      }
-      else {
-         last_seen_sequence_ = skizzay::domains::event_source::event_stream_sequence(e);
-         return skizzay::domains::event_source::with_timestamp(e, event_timestamp_);
-      }
-   }
-};
-
 }
 
 template<typename Event, typename CommitIdProvider, typename CommitTimestampProvider>
    requires concepts::event<Event>
       && std::invocable<CommitIdProvider> && concepts::identifier<std::invoke_result_t<CommitIdProvider>>
       && std::invocable<CommitTimestampProvider> && concepts::timestamp<std::invoke_result_t<CommitTimestampProvider>>
-      && std::is_same_v<std::invoke_result_t<CommitTimestampProvider>, event_stream_timestamp_t<Event>>
+      && std::same_as<std::invoke_result_t<CommitTimestampProvider>, event_stream_timestamp_t<Event>>
 class event_stream {
    using event_id_type = event_id_t<Event>;
    using event_stream_sequence_type = event_stream_sequence_t<Event>;
 
 public:
    using event_type = Event;
-   using commit_type = basic_commit<std::invoke_result_t<CommitIdProvider>, event_type>
+   using commit_type = basic_commit<std::invoke_result_t<CommitIdProvider>, event_id_type, event_stream_sequence_type, event_stream_timestamp_t<event_type>>
 
    event_id_type event_stream_id() const noexcept {
       return state_->event_stream_id_;
@@ -98,36 +74,22 @@ public:
       }
    }
 
-   template<concepts::event_range<event_type> EventRange>
+   template<typename EventRange>
+   requires concepts::event_range<EventRange>
+      && std::same_as<event_stream_id_t<EventRange>, event_stream_id_type>
+      && std::same_as<event_stream_sequence_t<EventRange>, event_stream_sequence_type>
+      && std::same_as<event_stream_timestamp_t<EventRange>, event_stream_timestamp_t<event_type>>
    commit_type put_events(EventRange events) {
-      auto commit_id = std::invoke(state_->commit_id_provider_);
-      // Should we capture the timestamp on the other side of the lock??
-      auto commit_timestamp = std::invoke(state_->commit_timestamp_provider_);
       std::scoped_lock lock{state_->events_mutex_};
-      auto const last_sequence = state_->events_.size();
+      auto const result = prepare_commit_result();
       try {
-         if (std::ranges::empty(events)) {
-            throw std::invalid_arguments{"Event range cannot be empty for a commit"};
-         }
-         auto timestamped_events = events | std::views::transform(details_::validate_and_apply_timestamp(
-            event_stream_id(),
-            event_stream_sequence_type{last_sequence},
-            commit_timestamp
-         ));
-         std::ranges::copy(timestamped_events, std::ranges::end(state_->events_));
-         return commit_type{
-            commit_id,
-            std::ranges::begin(state_->events_) + last_sequence + 1,
-            std::ranges::end(state_->events_)
-         };
+         validate(events, result.precommit_sequence);
+         persist(events, result.commit_timestamp);
+         return result.success(last_commited_sequence());
       }
       catch (...) {
-         rollback_to(last_sequence);
-         return commit_type{
-            commit_id,
-            commit_timestamp,
-            std::current_exception()
-         };
+         rollback_to(result.precommit_sequence);
+         return result.error(std::current_exception());
       }
    }
 
@@ -142,18 +104,83 @@ private:
 
    std::shared_ptr<details_::event_stream_state<Event>> state_;
 
-   template<concepts::event_range<event_type> EventRange>
-   void validate(EventRange events) const noexcept {
-      auto const b = std::ranges::begin(events);
-      if (b == std::ranges::end(events)) {
+   struct commit_result final {
+      std::invoke_result_t<CommitIdProvider> commit_id;
+      std::invoke_result_t<CommitTimestampProvider> commit_timestamp;
+      event_stream_id_type event_stream_id;
+      event_stream_sequence_type precommit_sequence;
+
+      commit_type success(event_stream_sequence_type commit_sequence) const noexcept {
+         return {
+            commit_id,
+            event_stream_id,
+            commit_timestamp,
+            precommit_sequence.next(),
+            commit_sequence
+         };
+      }
+
+      commit_type error(std::exception_ptr e) const noexcept {
+         return {
+            commit_id,
+            event_stream_id,
+            commit_timestamp,
+            e
+         };
+      }
+   };
+
+   commit_result prepare_commit_result() noexcept {
+      return commit_result{
+         std::invoke(state_->commit_id_provider_),
+         std::invoke(state_->commit_timestamp_provider_),
+         event_stream_id(),
+         last_commited_sequence()
+      };
+   }
+
+   event_stream_sequence_type last_commited_sequence() const noexcept {
+      // Only safe to do under a lock
+      return event_stream_sequence_type{state_->events_.size()};
+   }
+
+   template<typename EventRange>
+   requires concepts::event_range<EventRange>
+      && std::same_as<event_stream_id_t<EventRange>, event_id_type>
+      && std::same_as<event_stream_sequence_t<EventRange>, event_stream_sequence_type>
+      && std::same_as<event_stream_timestamp_t<EventRange>, Timestamp>
+   void validate(EventRange events, event_stream_sequence_type last_sequence) const noexcept {
+      if (std::ranges::empty(events)) {
          throw std::range_error{"Empty event range provided"};
+      }
+      else {
+         std::ranges::for_each(events, [last_sequence, expected_event_stream_id=this->event_stream_id()](auto const &event) mutable {
+            if (skizzay::domains::event_source::event_stream_id(e) != expected_event_stream_id) {
+               throw std::invalid_argument{"Event stream id does match the event's id"};
+            }
+            else if (skizzay::domains::event_source::event_stream_sequence(e) != last_sequence.next()) {
+               throw concurrency_collision{"Expected event stream sequence was not found"};
+            }
+            else {
+               last_sequence = last_sequence.next();
+            }
+         });
       }
    }
 
-   void rollback_to(std::integral const last_sequence) {
+   template<typename EventRange>
+   void persist(EventRange events, event_stream_timestamp_type commit_timestamp) {
+      auto timestamped_events = events
+         | std::views::transform([commit_timestamp](auto &event) {
+            return skizzay::domains::event_source::with_timestamp(event, commit_timestamp);
+         });
+      std::ranges::copy(timestamped_events, std::ranges::end(state_->events_));
+   }
+
+   void rollback_to(event_stream_sequence_type const last_sequence) noexcept {
       auto &events = state_->events_;
-      if (events.size() != last_sequence) {
-         events.erase(events.begin() + last_sequence, events.end())
+      if (events.size() != last_sequence.value()) {
+         events.erase(events.begin() + last_sequence.value(), events.end())
       }
    }
 };
@@ -206,7 +233,7 @@ public:
       std::scoped_lock lock{mutex_};
       auto const state = event_streams_.find(event_stream_id);
       if (state == event_streams_.end()) {
-         return {allocate_event_stream_state(std::move(event_stream_id))};
+         return event_stream_type{allocate_event_stream_state(std::move(event_stream_id))};
       }
       else {
          event_stream result{state->second};

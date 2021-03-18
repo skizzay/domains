@@ -37,7 +37,7 @@ public:
       return {};
    }
 
-   template<typename U=T, std::enable_if_t<!std::is_rvalue_reference_v<U>, int> = 0>
+   template<typename U=T, std::enable_if_t<!std::is_rvalue_reference_v<T>, int> = 0>
    std::suspend_always yield_value(std::remove_reference_t<T> &value) noexcept {
       value_ = std::addressof(value);
       return {};
@@ -68,7 +68,7 @@ private:
 };
 
 template<typename T>
-void retrieve_next_or_throw(std::coroutine_handle<generator_promise<T>> &coroutine) {
+void retrieve_next_or_throw(std::coroutine_handle<generator_promise<T>> const &coroutine) {
    coroutine.resume();
    if (coroutine.done()) {
       coroutine.promise().rethrow_if_exception();
@@ -88,6 +88,8 @@ public:
       using value_type = typename promise_type::value_type;
       using reference = typename promise_type::reference;
       using pointer = typename promise_type::pointer;
+
+      iterator() noexcept = default;
 
       bool operator==(iterator const &r) const noexcept {
          return this->coroutine_ == r.coroutine_;
@@ -123,6 +125,13 @@ public:
       }
 
    private:
+      friend class generator<T>;
+
+      explicit iterator(std::coroutine_handle<promise_type> coroutine) noexcept :
+         coroutine_{std::move(coroutine)}
+      {
+      }
+
       std::coroutine_handle<promise_type> coroutine_;
 
       reference value() const noexcept {
@@ -130,13 +139,13 @@ public:
       }
    };
 
-   generator() noexcept
-      : coroutine_{nullptr}
+   generator() noexcept :
+      coroutine_{nullptr}
    {
    }
 
    generator(generator &&other) noexcept :
-      : coroutine_{std::move(other.coroutine_)}
+      coroutine_{std::move(other.coroutine_)}
    {
       other.coroutine_ = nullptr;
    }
@@ -162,7 +171,7 @@ public:
       if (coroutine_) {
          details_::retrieve_next_or_throw(coroutine_);
       }
-      return {coroutine_};
+      return iterator{coroutine_};
    }
 
    auto end() const noexcept {
@@ -174,7 +183,7 @@ public:
    }
 
 private:
-   friend class promise_type;
+   friend class details_::generator_promise<T>;
 
    std::coroutine_handle<promise_type> coroutine_;
 
@@ -198,7 +207,7 @@ void swap(generator<T> &&l, generator<T> &&r) noexcept {
 namespace details_ {
 template<typename T>
 generator<T> generator_promise<T>::get_return_object() noexcept {
-   return {std::coroutine_handle<generator_promise<T>>::from_promise(*this)};
+   return generator<T>{std::coroutine_handle<generator_promise<T>>::from_promise(*this)};
 }
 }
 }

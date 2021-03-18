@@ -299,17 +299,17 @@ public:
 
 template <class Tag, concepts::identifier StreamIdType, concepts::sequenced StreamSequenceType,
           concepts::timestamp StreamTimestampType>
-class tagged_event : public basic_event<StreamIdType, StreamSequenceType, StreamTimestampType> {
+struct tagged_event : public basic_event<StreamIdType, StreamSequenceType, StreamTimestampType> {
    using basic_event<StreamIdType, StreamSequenceType, StreamTimestampType>::basic_event;
 
    constexpr tagged_event with_timestamp(StreamTimestampType stream_timestamp) const noexcept {
-      return {this->event_stream_id(), this->event_stream_sequence(), std::move(stream_timestamp)};
+      return tagged_event{this->event_stream_id(), this->event_stream_sequence(), std::move(stream_timestamp)};
    }
 
    constexpr tagged_event &with_timestamp(StreamTimestampType stream_timestamp) noexcept {
       return static_cast<tagged_event<Tag, StreamIdType, StreamSequenceType, StreamTimestampType> &>(
-         static_cast<basic_event<StreamIdType, StreamSequenceType, StreamTimestampType> &>(*this),
-         std::move(stream_timestamp)
+         static_cast<basic_event<StreamIdType, StreamSequenceType, StreamTimestampType> &>(*this)
+            .with_timestamp(std::move(stream_timestamp))
       );
    }
 };

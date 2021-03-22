@@ -20,6 +20,7 @@ concept commit = requires(T const &t) {
    { t.event_stream_starting_sequence() }->sequenced;
    { t.event_stream_ending_sequence() }->sequenced;
    { t.error() }->std::same_as<std::optional<typename T::error_type>>;
+   requires std::same_as<decltype(t.event_stream_starting_sequence()), decltype(t.event_stream_ending_sequence())>;
 };
 } // namespace concepts
 

@@ -175,9 +175,9 @@ namespace details_ {
 
 template<typename, typename=void> struct event_stream_id_type_impl;
 
-template<concepts::event Event>
-struct event_stream_id_type_impl<Event, std::void_t<>> {
-   using type = decltype(skizzay::domains::event_source::event_stream_id(std::declval<Event>()));
+template<typename T>
+struct event_stream_id_type_impl<T, std::void_t<decltype(skizzay::domains::event_source::event_stream_id(std::declval<T>()))>> {
+   using type = decltype(skizzay::domains::event_source::event_stream_id(std::declval<T>()));
 };
 
 template<concepts::event_range EventRange>
@@ -185,15 +185,10 @@ struct event_stream_id_type_impl<EventRange, std::void_t<>> {
    using type = typename event_stream_id_type_impl<std::ranges::range_value_t<EventRange>>::type;
 };
 
-template<typename T>
-struct event_stream_id_type_impl<T, std::void_t<typename T::event_type>> {
-   using type = typename event_stream_id_type_impl<typename T::event_type>::type;
-};
-
 template<typename, typename=void> struct event_stream_sequence_type_impl;
 
-template<concepts::event Event>
-struct event_stream_sequence_type_impl<Event, std::void_t<>> {
+template<typename Event>
+struct event_stream_sequence_type_impl<Event, std::void_t<decltype(skizzay::domains::event_source::event_stream_sequence(std::declval<Event>()))>> {
    using type = decltype(skizzay::domains::event_source::event_stream_sequence(std::declval<Event>()));
 };
 
@@ -202,24 +197,15 @@ struct event_stream_sequence_type_impl<EventRange, std::void_t<>> {
    using type = typename event_stream_sequence_type_impl<std::ranges::range_value_t<EventRange>>::type;
 };
 
-template<typename T>
-struct event_stream_sequence_type_impl<T, std::void_t<typename T::event_type>> {
-   using type = typename event_stream_sequence_type_impl<typename T::event_type>::type;
-};
-
 template<typename, typename=void> struct event_stream_timestamp_type_impl;
 
-template<concepts::event Event>
-struct event_stream_timestamp_type_impl<Event, std::void_t<>> {
+template<typename Event>
+struct event_stream_timestamp_type_impl<Event, std::void_t<decltype(skizzay::domains::event_source::event_stream_timestamp(std::declval<Event>()))>> {
    using type = decltype(skizzay::domains::event_source::event_stream_timestamp(std::declval<Event>()));
 };
 
 template<concepts::event_range EventRange>
 struct event_stream_timestamp_type_impl<EventRange, std::void_t<>> : event_stream_timestamp_type_impl<std::ranges::range_value_t<EventRange>> {
-};
-
-template<typename T>
-struct event_stream_timestamp_type_impl<T, std::void_t<typename T::event_type>> : event_stream_timestamp_type_impl<typename T::event_type> {
 };
 
 template<typename,typename=void> struct event_type_impl;
@@ -238,6 +224,10 @@ struct event_type_impl<T, std::void_t<typename T::event_type>> : event_type_impl
 };
 } // namespace details_
 
+
+template<typename T>
+using event_t = typename details_::event_type_impl<T>::type;
+
 template<typename T>
 using event_stream_id_t = typename details_::event_stream_id_type_impl<T>::type;
 
@@ -246,9 +236,6 @@ using event_stream_sequence_t = typename details_::event_stream_sequence_type_im
 
 template<typename T>
 using event_stream_timestamp_t = typename details_::event_stream_timestamp_type_impl<T>::type;
-
-template<typename T>
-using event_t = typename details_::event_type_impl<T>::type;
 
 
 template <concepts::identifier StreamIdType, concepts::sequenced StreamSequenceType,

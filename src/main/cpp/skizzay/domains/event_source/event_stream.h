@@ -73,17 +73,50 @@ namespace concepts {
 template<typename T>
 concept event_stream = event<typename T::event_type>
    && requires (T const &tc) {
-   { skizzay::domains::event_source::event_stream_id(tc) } -> identifier;
-   { skizzay::domains::event_source::events(tc, std::declval<event_stream_sequence_t<T>>()) } -> event_range;
-   { skizzay::domains::event_source::events(tc, std::declval<event_stream_sequence_t<T>>(), std::declval<event_stream_sequence_t<T>>().next()) } -> event_range;
+      { skizzay::domains::event_source::event_stream_id(tc) } -> identifier;
+      { skizzay::domains::event_source::events(tc, std::declval<event_stream_sequence_t<T>>()) } -> event_range;
+      { skizzay::domains::event_source::events(tc, std::declval<event_stream_sequence_t<T>>(), std::declval<event_stream_sequence_t<T>>().next()) } -> event_range;
+      requires std::same_as<
+            event_t<decltype(skizzay::domains::event_source::events(tc, std::declval<event_stream_sequence_t<T>>(), std::declval<event_stream_sequence_t<T>>().next()))>,
+            event_t<T>
+      >;
 };
+}
+
+namespace details_ {
+template<typename, typename, typename=void>
+struct put_events_result_type_impl;
+
+template<concepts::event_stream EventStream, concepts::event_range EventRange>
+struct put_events_result_type_impl<EventStream, EventRange, std::void_t<std::invoke_result_t<decltype(skizzay::domains::event_source::put_events), EventStream &, EventRange>>> {
+   using type = std::invoke_result_t<decltype(skizzay::domains::event_source::put_events), EventStream &, EventRange>;
+};
+
+template<typename, typename>
+struct commit_type_impl;
+
+template<concepts::event_stream EventStream, concepts::event_range EventRange>
+   requires concepts::commit<typename put_events_result_type_impl<EventStream, EventRange>::type>
+struct commit_type_impl<EventStream, EventRange> {
+   using type = typename put_events_result_type_impl<EventStream, EventRange>::type;
+};
+}
+
+template<concepts::event_stream EventStream, concepts::event_range EventRange>
+using commit_t = typename details_::commit_type_impl<EventStream, EventRange>::type;
+
+namespace concepts {
 
 template<typename EventStream, typename EventRange>
 concept event_range_writer = event_stream<EventStream>
    && event_range<EventRange>
-   && requires (EventStream &es, EventRange er) {
-      { skizzay::domains::event_source::put_events(es, er) } -> commit;
-   };
+   && std::same_as<event_stream_id_t<EventRange>, event_stream_id_t<EventStream>>
+   && std::same_as<event_stream_sequence_t<EventRange>, event_stream_sequence_t<EventStream>>
+   && std::same_as<event_stream_timestamp_t<EventRange>, event_stream_timestamp_t<EventStream>>
+   && std::same_as<event_stream_id_t<EventRange>, event_stream_id_t<commit_t<EventStream, EventRange>>>
+   && std::same_as<event_stream_timestamp_t<EventRange>, decltype(std::declval<commit_t<EventStream, EventRange>>().commit_timestamp())>
+   && std::same_as<event_stream_sequence_t<EventRange>, decltype(std::declval<commit_t<EventStream, EventRange>>().event_stream_starting_sequence())>;
+
 }
 
 template<concepts::event_stream EventStream, concepts::sequenced Sequence>

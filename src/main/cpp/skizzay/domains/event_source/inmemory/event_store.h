@@ -143,10 +143,6 @@ private:
    }
 
    template<typename EventRange>
-   requires concepts::event_range<EventRange>
-      && std::same_as<event_stream_id_t<EventRange>, event_stream_id_t<Event>>
-      && std::same_as<event_stream_sequence_t<EventRange>, event_stream_sequence_t<Event>>
-      && std::same_as<event_stream_timestamp_t<EventRange>, event_stream_timestamp_t<Event>>
    void validate(EventRange const &events, event_stream_sequence_t<Event> last_sequence) const {
       if (std::ranges::empty(events)) {
          throw std::range_error{"Empty event range provided"};
@@ -200,7 +196,7 @@ class event_store {
    CommitTimestampProvider commit_timestamp_provider_;
    event_stream_table event_streams_;
 
-   value_type allocate_event_stream_state(key_type key) {
+   value_type allocate_event_stream_state(key_type const &key) {
       auto value = std::allocate_shared<event_stream_state_type>(
          event_streams_.get_allocator(),
          key,
@@ -208,8 +204,19 @@ class event_store {
          commit_id_provider_,
          commit_timestamp_provider_
       );
-      event_streams_.emplace(std::move(key), value);
+      event_streams_.emplace(key, value);
       return value;
+   }
+
+   value_type get_event_stream_state(key_type const &key) {
+      std::scoped_lock lock{mutex_};
+      auto const state = event_streams_.find(key);
+      if (state == event_streams_.end()) {
+         return allocate_event_stream_state(key);
+      }
+      else {
+         return state->second;
+      }
    }
 
 public:
@@ -227,38 +234,8 @@ public:
    {
    }
 
-   event_stream_type create_event_stream(key_type event_stream_id) {
-      std::scoped_lock lock{mutex_};
-      auto const state = event_streams_.find(event_stream_id);
-      if (state == event_streams_.end()) {
-         return event_stream_type{allocate_event_stream_state(std::move(event_stream_id))};
-      }
-      else {
-         event_stream result{state->second};
-         if (result.empty()) {
-            return result;
-         }
-         else {
-            throw std::logic_error{"Event stream already exists"};
-         }
-      }
-   }
-
-   std::optional<event_stream_type> get_event_stream(key_type const &event_stream_id) const {
-      std::scoped_lock lock{mutex_};
-      auto const state = event_streams_.find(event_stream_id);
-      if (state == event_streams_.end()) {
-         return std::nullopt;
-      }
-      else {
-         event_stream result{state->second};
-         if (result.empty()) {
-            return std::nullopt;
-         }
-         else {
-            return result;
-         }
-      }
+   event_stream_type get_event_stream(key_type const &event_stream_id) {
+      return event_stream_type{get_event_stream_state(event_stream_id)};
    }
 };
 

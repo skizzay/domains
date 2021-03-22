@@ -36,44 +36,21 @@ TEST_CASE("In-Memory Event Store", "[event_source, event_store, event_stream]") 
 
    SECTION("Creating an event stream") {
       SECTION("when not previously created works") {
-         auto event_stream = target.create_event_stream("event_stream_id");
-         SUCCEED("nothing thrown");
+         CHECK_NOTHROW(target.get_event_stream("event_stream_id"));
 
          SECTION("and can be recreated if nothing was persisted") {
-            CHECK_NOTHROW(target.create_event_stream("event_stream_id"));
-         }
-
-         SECTION("but will fail if events have been persisted") {
-            put_events(event_stream, std::ranges::views::single(test_event{"event_stream_id", stream_sequence_type{1}}));
-            CHECK_THROWS(target.create_event_stream("event_stream_id"));
+            CHECK_NOTHROW(target.get_event_stream("event_stream_id"));
          }
 
          SECTION("and can create another stream with different id") {
-            CHECK_NOTHROW(target.create_event_stream("different_id"));
+            CHECK_NOTHROW(target.get_event_stream("different_id"));
          }
-      }
-   }
-
-   SECTION("Getting an event stream") {
-      SECTION("is empty if it cannot be found") {
-         REQUIRE(std::nullopt == target.get_event_stream("event_stream_id"));
-      }
-
-      SECTION("is empty if nothing was put into the stream") {
-         target.create_event_stream("event_stream_id");
-         REQUIRE(std::nullopt == target.get_event_stream("event_stream_id"));
-      }
-
-      SECTION("succeeds when something has been put into the stream") {
-         auto event_stream = target.create_event_stream("event_stream_id");
-         put_events(event_stream, std::ranges::views::single(test_event{"event_stream_id", stream_sequence_type{1}}));
-         REQUIRE(std::nullopt != target.get_event_stream("event_stream_id"));
       }
    }
 
    SECTION("Utilizing the event stream") {
       auto stream_id = "event_stream_id"s;
-      auto event_stream = target.create_event_stream(stream_id);
+      auto event_stream = target.get_event_stream(stream_id);
 
       SECTION("is initially empty") {
          REQUIRE(event_stream.empty());

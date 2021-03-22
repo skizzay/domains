@@ -11,7 +11,7 @@ inline namespace generator_v1 {
 
 template<typename> class generator;
 
-namespace details_ {
+namespace generator_details_ {
 
 template<typename T>
 class generator_promise {
@@ -79,7 +79,7 @@ void retrieve_next_or_throw(std::coroutine_handle<generator_promise<T>> const &c
 template<typename T>
 class [[nodiscard]] generator {
 public:
-   using promise_type = details_::generator_promise<T>;
+   using promise_type = generator_details_::generator_promise<T>;
 
    class iterator {
    public:
@@ -108,7 +108,7 @@ public:
       }
 
       iterator & operator++() {
-         details_::retrieve_next_or_throw(coroutine_);
+         generator_details_::retrieve_next_or_throw(coroutine_);
          return *this;
       }
 
@@ -169,7 +169,7 @@ public:
 
    iterator begin() const noexcept {
       if (coroutine_) {
-         details_::retrieve_next_or_throw(coroutine_);
+         generator_details_::retrieve_next_or_throw(coroutine_);
       }
       return iterator{coroutine_};
    }
@@ -183,7 +183,7 @@ public:
    }
 
 private:
-   friend class details_::generator_promise<T>;
+   friend class generator_details_::generator_promise<T>;
 
    std::coroutine_handle<promise_type> coroutine_;
 
@@ -204,7 +204,7 @@ void swap(generator<T> &&l, generator<T> &&r) noexcept {
    l.swap(r);
 }
 
-namespace details_ {
+namespace generator_details_ {
 template<typename T>
 generator<T> generator_promise<T>::get_return_object() noexcept {
    return generator<T>{std::coroutine_handle<generator_promise<T>>::from_promise(*this)};

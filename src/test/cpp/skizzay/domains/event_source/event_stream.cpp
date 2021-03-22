@@ -17,8 +17,8 @@ using id_type = std::string;
 using sequence_type = sequence<struct test_sequence, std::uint32_t>;
 using timestamp_type = std::chrono::high_resolution_clock::time_point;
 using commit_type = basic_commit<id_type, id_type, sequence_type, timestamp_type>;
-struct test_event : tagged_event<struct test, std::string, sequence_type, std::chrono::steady_clock::time_point> {
-   using tagged_event<struct test, std::string, sequence_type, std::chrono::steady_clock::time_point>::tagged_event;
+struct test_event : tagged_event<struct test, std::string, sequence_type, timestamp_type> {
+   using tagged_event<struct test, std::string, sequence_type, timestamp_type>::tagged_event;
 };
 
 template<concepts::event Event>
@@ -73,6 +73,26 @@ TEST_CASE("Event Stream", "[event_source, event_stream]") {
    }
 
    SECTION("event_range_writer matches on put_events") {
+      REQUIRE(concepts::event_stream<event_stream_fake<test_event>>);
+      REQUIRE(concepts::event_range<std::vector<test_event>>);
+      REQUIRE((std::same_as<event_stream_id_t<std::vector<test_event>>, event_stream_id_t<event_stream_fake<test_event>>>));
+      REQUIRE((std::same_as<event_stream_sequence_t<std::vector<test_event>>, event_stream_sequence_t<event_stream_fake<test_event>>>));
+      REQUIRE((std::same_as<event_stream_timestamp_t<std::vector<test_event>>, event_stream_timestamp_t<event_stream_fake<test_event>>>));
+      REQUIRE((
+         std::same_as<commit_t<event_stream_fake<test_event>, std::vector<test_event>>, commit_type>
+      ));
+      REQUIRE((std::same_as<
+         event_stream_id_t<std::vector<test_event>>,
+         event_stream_id_t<commit_t<event_stream_fake<test_event>, std::vector<test_event>>>
+      >));
+      REQUIRE((std::same_as<
+         event_stream_timestamp_t<std::vector<test_event>>,
+         decltype(std::declval<commit_t<event_stream_fake<test_event>, std::vector<test_event>>>().commit_timestamp())
+      >));
+      REQUIRE((std::same_as<
+         event_stream_sequence_t<std::vector<test_event>>,
+         decltype(std::declval<commit_t<event_stream_fake<test_event>, std::vector<test_event>>>().event_stream_starting_sequence())
+      >));
       REQUIRE((concepts::event_range_writer<event_stream_fake<test_event>, std::vector<test_event>>));
    }
 }

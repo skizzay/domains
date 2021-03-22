@@ -197,6 +197,11 @@ struct event_stream_sequence_type_impl<EventRange, std::void_t<>> {
    using type = typename event_stream_sequence_type_impl<std::ranges::range_value_t<EventRange>>::type;
 };
 
+template<typename T>
+   requires concepts::event<typename T::event_type>
+struct event_stream_sequence_type_impl<T, std::void_t<typename T::event_type>> : event_stream_sequence_type_impl<typename T::event_type> {
+};
+
 template<typename, typename=void> struct event_stream_timestamp_type_impl;
 
 template<typename Event>
@@ -206,6 +211,11 @@ struct event_stream_timestamp_type_impl<Event, std::void_t<decltype(skizzay::dom
 
 template<concepts::event_range EventRange>
 struct event_stream_timestamp_type_impl<EventRange, std::void_t<>> : event_stream_timestamp_type_impl<std::ranges::range_value_t<EventRange>> {
+};
+
+template<typename T>
+   requires concepts::event<typename T::event_type>
+struct event_stream_timestamp_type_impl<T, std::void_t<typename T::event_type>> : event_stream_timestamp_type_impl<typename T::event_type> {
 };
 
 template<typename,typename=void> struct event_type_impl;

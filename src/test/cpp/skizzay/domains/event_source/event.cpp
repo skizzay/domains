@@ -1,5 +1,5 @@
 #include <skizzay/domains/event_source/event.h>
-#include <skizzay/domains/event_source/sequence.h>
+#include <skizzay/domains/sequence.h>
 #include <string>
 #include <chrono>
 #if __has_include(<catch / catch.hpp>)
@@ -11,7 +11,7 @@
 using namespace skizzay::domains::event_source;
 
 namespace {
-using test_sequence = sequence<struct test, std::size_t>;
+using test_sequence = skizzay::domains::sequence<struct test, std::size_t>;
 struct test_event : tagged_event<struct test, std::string, test_sequence, std::chrono::steady_clock::time_point> {
    using tagged_event<struct test, std::string, test_sequence, std::chrono::steady_clock::time_point>::tagged_event;
 };

@@ -2,7 +2,7 @@
 
 #include <concepts>
 
-namespace skizzay::domains::event_source {
+namespace skizzay::domains {
 
 template<class Tag, std::integral T>
 class sequence {

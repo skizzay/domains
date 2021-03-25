@@ -3,7 +3,7 @@
 #include <concepts>
 #include <chrono>
 
-namespace skizzay::domains::event_source::concepts {
+namespace skizzay::domains::concepts {
 
 template<class T>
 concept identifier = std::totally_ordered<T> && std::copyable<T>;

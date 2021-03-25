@@ -10,7 +10,7 @@ namespace skizzay::domains::event_source {
 
 inline namespace events_details_ {
 inline constexpr struct events_function_ final {
-   template<concepts::sequenced Sequence>
+   template<skizzay::domains::concepts::sequenced Sequence>
    static inline constexpr Sequence max_ending_inclusive_sequence{std::numeric_limits<typename Sequence::value_type>::max()};
 
    template <typename EventStream>
@@ -73,7 +73,7 @@ namespace concepts {
 template<typename T>
 concept event_stream = event<typename T::event_type>
    && requires (T const &tc) {
-      { skizzay::domains::event_source::event_stream_id(tc) } -> identifier;
+      { skizzay::domains::event_source::event_stream_id(tc) } -> skizzay::domains::concepts::identifier;
       { skizzay::domains::event_source::events(tc, std::declval<event_stream_sequence_t<T>>()) } -> event_range;
       { skizzay::domains::event_source::events(tc, std::declval<event_stream_sequence_t<T>>(), std::declval<event_stream_sequence_t<T>>().next()) } -> event_range;
       requires std::same_as<
@@ -119,7 +119,7 @@ concept event_range_writer = event_stream<EventStream>
 
 }
 
-template<concepts::event_stream EventStream, concepts::sequenced Sequence>
+template<concepts::event_stream EventStream, skizzay::domains::concepts::sequenced Sequence>
 using events_t = decltype(skizzay::domains::event_source::events(std::declval<EventStream>(), std::declval<Sequence>()));
 
 }

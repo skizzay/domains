@@ -1,5 +1,5 @@
-#include <skizzay/domains/event_source/sequence.h>
-#include <skizzay/domains/event_source/concepts.h>
+#include <skizzay/domains/sequence.h>
+#include <skizzay/domains/concepts.h>
 #include <string>
 #if __has_include(<catch / catch.hpp>)
 #include <catch/catch.hpp>
@@ -7,7 +7,7 @@
 #include <catch.hpp>
 #endif
 
-using namespace skizzay::domains::event_source;
+using namespace skizzay::domains;
 
 using unsigned_sequenced = sequence<struct unsigned_sequenced_tag, std::make_unsigned_t<std::size_t>>;
 using signed_sequenced = sequence<struct signed_sequenced_tag, std::make_signed_t<std::size_t>>;

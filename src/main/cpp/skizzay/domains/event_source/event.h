@@ -2,7 +2,7 @@
 
 #include <functional>
 #include <ranges>
-#include <skizzay/domains/event_source/concepts.h>
+#include <skizzay/domains/concepts.h>
 #include <skizzay/domains/tag_dispatch.h>
 #include <utility>
 #include <variant>
@@ -187,11 +187,11 @@ namespace concepts {
 template <typename T>
 concept event = std::copyable<std::remove_cvref_t<T>> && requires(std::remove_cvref_t<T> const &t) {
    { skizzay::domains::event_source::event_stream_id(t) }
-   ->identifier;
+   -> skizzay::domains::concepts::identifier;
    { skizzay::domains::event_source::event_stream_sequence(t) }
-   ->sequenced;
+   -> skizzay::domains::concepts::sequenced;
    { skizzay::domains::event_source::event_stream_timestamp(t) }
-   ->timestamp;
+   -> skizzay::domains::concepts::timestamp;
 };
 
 template <typename T>
@@ -276,8 +276,11 @@ template<typename T>
 using event_stream_timestamp_t = typename details_::event_stream_timestamp_type_impl<T>::type;
 
 
-template <concepts::identifier StreamIdType, concepts::sequenced StreamSequenceType,
-          concepts::timestamp StreamTimestampType>
+template <
+   skizzay::domains::concepts::identifier StreamIdType,
+   skizzay::domains::concepts::sequenced StreamSequenceType,
+   skizzay::domains::concepts::timestamp StreamTimestampType
+>
 class basic_event {
    StreamIdType event_stream_id_;
    StreamSequenceType event_stream_sequence_;
@@ -322,8 +325,12 @@ public:
    }
 };
 
-template <class Tag, concepts::identifier StreamIdType, concepts::sequenced StreamSequenceType,
-          concepts::timestamp StreamTimestampType>
+template <
+   class Tag,
+   skizzay::domains::concepts::identifier StreamIdType,
+   skizzay::domains::concepts::sequenced StreamSequenceType,
+   skizzay::domains::concepts::timestamp StreamTimestampType
+>
 struct tagged_event : public basic_event<StreamIdType, StreamSequenceType, StreamTimestampType> {
    using basic_event<StreamIdType, StreamSequenceType, StreamTimestampType>::basic_event;
 

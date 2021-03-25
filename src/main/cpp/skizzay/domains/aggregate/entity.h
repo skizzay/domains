@@ -1,7 +1,7 @@
 #pragma once
 
 #include <skizzay/domains/tag_dispatch.h>
-#include <skizzay/domains/event_source/concepts.h>
+#include <skizzay/domains/concepts.h>
 #include <functional>
 
 namespace skizzay::domains::aggregate {
@@ -10,7 +10,7 @@ inline namespace entity_id_details_ {
 inline constexpr struct entity_id_function_ final {
    template <typename E>
    requires skizzay::domains::tag_invocable<entity_id_function_, E const &> &&
-      event_source::concepts::identifier<
+      concepts::identifier<
          skizzay::domains::tag_invoke_result_t<entity_id_function_, E const &>>
    constexpr auto
       operator()(E const &e) const
@@ -22,7 +22,7 @@ inline constexpr struct entity_id_function_ final {
    template <typename E>
    requires requires(E const &e) {
       { e.entity_id() }
-      -> event_source::concepts::identifier;
+      -> concepts::identifier;
       requires !skizzay::domains::tag_invocable<entity_id_function_, E const &>;
    }
    constexpr auto operator()(E const &e) const noexcept(noexcept(e.entity_id()))
@@ -34,7 +34,7 @@ inline constexpr struct entity_id_function_ final {
    requires requires(E const &e) {
       { *e };
       requires std::invocable<entity_id_function_, decltype(*e)>;
-      requires event_source::concepts::identifier<std::invoke_result_t<entity_id_function_, decltype(*e)>>;
+      requires concepts::identifier<std::invoke_result_t<entity_id_function_, decltype(*e)>>;
       requires !skizzay::domains::tag_invocable<entity_id_function_, E const &>;
    }
    constexpr auto operator()(E const &e) const
@@ -61,7 +61,7 @@ inline namespace entity_version_details_ {
 inline constexpr struct entity_version_function_ final {
    template <typename E>
    requires skizzay::domains::tag_invocable<entity_version_function_, E const &> &&
-      event_source::concepts::sequenced<
+      skizzay::domains::concepts::sequenced<
          skizzay::domains::tag_invoke_result_t<entity_version_function_, E const &>>
    constexpr auto
       operator()(E const &e) const
@@ -73,7 +73,7 @@ inline constexpr struct entity_version_function_ final {
    template <typename E>
    requires requires(E const &e) {
       { e.entity_version() }
-      -> event_source::concepts::sequenced;
+      -> skizzay::domains::concepts::sequenced;
       requires !skizzay::domains::tag_invocable<entity_version_function_, E const &>;
    }
    constexpr auto operator()(E const &e) const noexcept(noexcept(e.entity_version()))
@@ -85,7 +85,7 @@ inline constexpr struct entity_version_function_ final {
    requires requires(E const &e) {
       { *e };
       requires std::invocable<entity_version_function_, decltype(*e)>;
-      requires event_source::concepts::sequenced<std::invoke_result_t<entity_version_function_, decltype(*e)>>;
+      requires skizzay::domains::concepts::sequenced<std::invoke_result_t<entity_version_function_, decltype(*e)>>;
       requires !skizzay::domains::tag_invocable<entity_version_function_, E const &>;
    }
    constexpr auto operator()(E const &e) const
@@ -111,8 +111,8 @@ namespace concepts {
 
 template<typename T>
 concept entity = requires(T const &tc, T &t) {
-   { skizzay::domains::aggregate::entity_id(tc) } -> event_source::concepts::identifier;
-   { skizzay::domains::aggregate::entity_version(tc) } -> event_source::concepts::sequenced;
+   { skizzay::domains::aggregate::entity_id(tc) } -> skizzay::domains::concepts::identifier;
+   { skizzay::domains::aggregate::entity_version(tc) } -> skizzay::domains::concepts::sequenced;
    requires std::is_constructible_v<T, entity_id_t<T>>;
 };
 

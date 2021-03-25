@@ -45,8 +45,8 @@ struct event_stream_state : std::enable_shared_from_this<event_stream_state<Even
 
 template<typename Event, typename CommitIdProvider, typename CommitTimestampProvider>
    requires concepts::event<Event>
-      && std::invocable<CommitIdProvider> && concepts::identifier<std::invoke_result_t<CommitIdProvider>>
-      && std::invocable<CommitTimestampProvider> && concepts::timestamp<std::invoke_result_t<CommitTimestampProvider>>
+      && std::invocable<CommitIdProvider> && skizzay::domains::concepts::identifier<std::invoke_result_t<CommitIdProvider>>
+      && std::invocable<CommitTimestampProvider> && skizzay::domains::concepts::timestamp<std::invoke_result_t<CommitTimestampProvider>>
       && std::same_as<std::invoke_result_t<CommitTimestampProvider>, event_stream_timestamp_t<Event>>
 class event_stream {
    using event_id_type = event_stream_id_t<Event>;
@@ -182,8 +182,8 @@ private:
 
 template<typename Event, typename CommitIdProvider, typename CommitTimestampProvider>
    requires concepts::event<Event>
-      && std::invocable<CommitIdProvider> && concepts::identifier<std::invoke_result_t<CommitIdProvider>>
-      && std::invocable<CommitTimestampProvider> && concepts::timestamp<std::invoke_result_t<CommitTimestampProvider>>
+      && std::invocable<CommitIdProvider> && skizzay::domains::concepts::identifier<std::invoke_result_t<CommitIdProvider>>
+      && std::invocable<CommitTimestampProvider> && skizzay::domains::concepts::timestamp<std::invoke_result_t<CommitTimestampProvider>>
       && std::same_as<std::invoke_result_t<CommitTimestampProvider>, event_stream_timestamp_t<Event>>
 class event_store {
    using key_type = event_stream_id_t<Event>;

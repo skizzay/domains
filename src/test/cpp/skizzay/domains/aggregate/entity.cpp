@@ -1,5 +1,5 @@
 #include <skizzay/domains/aggregate/entity.h>
-#include <skizzay/domains/event_source/sequence.h>
+#include <skizzay/domains/sequence.h>
 #if __has_include(<catch / catch.hpp>)
 #include <catch/catch.hpp>
 #elif __has_include(<catch.hpp>)
@@ -12,7 +12,7 @@ using skizzay::domains::tag_t;
 
 namespace {
 using entity_id_type = std::string;
-using entity_version_type = skizzay::domains::event_source::sequence<struct test, std::size_t>;
+using entity_version_type = skizzay::domains::sequence<struct test, std::size_t>;
 
 struct test_entity {
    entity_id_type entity_id_;
@@ -44,7 +44,7 @@ struct tagged_entity_version {
 };
 }
 
-TEST_CASE("entity_id", "[aggregate, entity]") {
+TEST_CASE("entity_id", "[aggregate][entity]") {
    SECTION("Member function") {
       entity_id_type const expected{"entity_id"};
       test_entity target{expected};
@@ -66,7 +66,7 @@ TEST_CASE("entity_id", "[aggregate, entity]") {
    }
 }
 
-TEST_CASE("entity_version", "[aggregate, entity]") {
+TEST_CASE("entity_version", "[aggregate][entity]") {
    SECTION("Member function") {
       entity_version_type const expected{55};
       test_entity target{"entity_id", expected};

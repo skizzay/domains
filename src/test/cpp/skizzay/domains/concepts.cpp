@@ -1,4 +1,4 @@
-#include <skizzay/domains/event_source/concepts.h>
+#include <skizzay/domains/concepts.h>
 #include <string>
 #if __has_include(<catch / catch.hpp>)
 #include <catch/catch.hpp>
@@ -6,7 +6,7 @@
 #include <catch.hpp>
 #endif
 
-using namespace skizzay::domains::event_source::concepts;
+using namespace skizzay::domains::concepts;
 
 namespace {
 struct not_totally_ordered {

@@ -1,6 +1,6 @@
 #include <skizzay/domains/event_source/inmemory/event_store.h>
 #include <skizzay/domains/event_source/event_stream.h>
-#include <skizzay/domains/event_source/sequence.h>
+#include <skizzay/domains/sequence.h>
 #include <chrono>
 #if __has_include(<catch / catch.hpp>)
 #include <catch/catch.hpp>
@@ -14,7 +14,7 @@ using namespace std::literals;
 namespace {
 
 using stream_id_type = std::string;
-using stream_sequence_type = sequence<struct test, std::size_t>;
+using stream_sequence_type = skizzay::domains::sequence<struct test, std::size_t>;
 using stream_timestamp_type = std::chrono::high_resolution_clock::time_point;
 using test_event = tagged_event<struct test, stream_id_type, stream_sequence_type, stream_timestamp_type>;
 using commit_timestamp_provider = decltype(&std::chrono::high_resolution_clock::now);

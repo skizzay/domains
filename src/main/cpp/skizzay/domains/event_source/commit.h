@@ -4,7 +4,7 @@
 #include <system_error>
 #include <optional>
 #include <vector>
-#include <skizzay/domains/event_source/concepts.h>
+#include <skizzay/domains/concepts.h>
 #include <skizzay/domains/event_source/event.h>
 
 namespace skizzay::domains::event_source {
@@ -14,11 +14,11 @@ template <typename T>
 concept commit = requires(T const &t) {
    typename T::error_type;
    { t.is_error() } -> std::same_as<bool>;
-   { t.commit_id() } -> identifier;
-   { t.commit_timestamp() } -> timestamp;
-   { t.event_stream_id() }->identifier;
-   { t.event_stream_starting_sequence() }->sequenced;
-   { t.event_stream_ending_sequence() }->sequenced;
+   { t.commit_id() } -> skizzay::domains::concepts::identifier;
+   { t.commit_timestamp() } -> skizzay::domains::concepts::timestamp;
+   { t.event_stream_id() }->skizzay::domains::concepts::identifier;
+   { t.event_stream_starting_sequence() }->skizzay::domains::concepts::sequenced;
+   { t.event_stream_ending_sequence() }->skizzay::domains::concepts::sequenced;
    { t.error() }->std::same_as<std::optional<typename T::error_type>>;
    requires std::same_as<decltype(t.event_stream_starting_sequence()), decltype(t.event_stream_ending_sequence())>;
 };
@@ -43,7 +43,13 @@ constexpr std::tuple<Sequence, Sequence> sequence_range(std::tuple<Sequence, Seq
 } // namespace details_
 
 
-template <concepts::identifier CommitIdType, concepts::identifier EventStreamIdType, concepts::sequenced Sequence, concepts::timestamp Timestamp, typename ErrorType=std::exception_ptr>
+template <
+   skizzay::domains::concepts::identifier CommitIdType,
+   skizzay::domains::concepts::identifier EventStreamIdType,
+   skizzay::domains::concepts::sequenced Sequence,
+   skizzay::domains::concepts::timestamp Timestamp,
+   typename ErrorType=std::exception_ptr
+>
 struct basic_commit {
    using commit_id_type = CommitIdType;
    using event_stream_id_type = EventStreamIdType;

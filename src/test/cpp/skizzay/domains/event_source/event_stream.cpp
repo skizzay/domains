@@ -1,5 +1,5 @@
 #include <skizzay/domains/event_source/event_stream.h>
-#include <skizzay/domains/event_source/sequence.h>
+#include <skizzay/domains/sequence.h>
 #include <chrono>
 #include <vector>
 #if __has_include(<catch / catch.hpp>)
@@ -14,7 +14,7 @@ using namespace skizzay::domains::event_source;
 namespace {
 
 using id_type = std::string;
-using sequence_type = sequence<struct test_sequence, std::uint32_t>;
+using sequence_type = skizzay::domains::sequence<struct test_sequence, std::uint32_t>;
 using timestamp_type = std::chrono::high_resolution_clock::time_point;
 using commit_type = basic_commit<id_type, id_type, sequence_type, timestamp_type>;
 struct test_event : tagged_event<struct test, std::string, sequence_type, timestamp_type> {
@@ -66,7 +66,7 @@ TEST_CASE("Event Stream", "[event_source, event_stream]") {
    sequence_type end{2};
 
    SECTION("event_stream matches on events and event_stream_id") {
-      REQUIRE(concepts::identifier<decltype(target.event_stream_id())>);
+      REQUIRE(skizzay::domains::concepts::identifier<decltype(target.event_stream_id())>);
       REQUIRE((concepts::event_range<decltype(skizzay::domains::event_source::events(target, begin))>));
       REQUIRE((concepts::event_range<decltype(skizzay::domains::event_source::events(target, begin, end))>));
       REQUIRE(concepts::event_stream<event_stream_fake<test_event>>);

@@ -1,1 +1,2 @@
+ADD_SUBDIRECTORY(skizzay/domains/aggregate)
 ADD_SUBDIRECTORY(skizzay/domains/event_source)

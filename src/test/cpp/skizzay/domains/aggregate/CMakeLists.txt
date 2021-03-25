@@ -1,7 +1,8 @@
 ADD_EXECUTABLE(aggregate_tests
+   entity.cpp
    main.cpp)
 TARGET_INCLUDE_DIRECTORIES(aggregate_tests PRIVATE
-   ${PROJECT_SOURCE_DIR}
+   ${PROJECT_SOURCE_DIR}/src/main/cpp
    ${CONAN_INCLUDE_DIRS_CATCH})
 TARGET_LINK_LIBRARIES(aggregate_tests PRIVATE
    ${CONAN_LIBS_DIRS_KERCHOW}

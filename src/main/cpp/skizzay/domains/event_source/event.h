@@ -127,6 +127,34 @@ inline constexpr struct event_stream_timestamp_function_ final {
 } // namespace event_stream_timestamp_details_
 
 
+inline namespace with_id_details_ {
+inline constexpr struct with_id_function_ final {
+   template <typename E>
+   using id_t = std::invoke_result_t<decltype(skizzay::domains::event_source::event_stream_id), E &>;
+
+   template <typename E>
+   requires skizzay::domains::tag_invocable<with_id_function_, E &, id_t<E>>
+      && concepts::identifier<id_t<E>>
+   constexpr auto operator()(E &e, id_t<E> t) const
+      noexcept(skizzay::domains::nothrow_tag_invocable<with_id_function_, E &, id_t<E>>)
+         -> skizzay::domains::tag_invoke_result_t<with_id_function_, E &, id_t<E>> {
+      return skizzay::domains::tag_invoke(*this, static_cast<E &>(e), t);
+   }
+
+   template <typename E>
+   requires (!skizzay::domains::tag_invocable<with_id_function_, E &, id_t<E>>)
+      && concepts::identifier<id_t<E>>
+      && requires(E &e, id_t<E> t) {
+         { e.with_id(t) };
+      }
+   constexpr auto operator()(E &e, id_t<E> t) const
+      noexcept(noexcept(e.with_id(t))) -> decltype(e.with_id(t)) {
+      return e.with_id(t);
+   }
+} with_id = {};
+} // namespace with_id_details_
+
+
 inline namespace with_timestamp_details_ {
 inline constexpr struct with_timestamp_function_ final {
    template <typename E>
@@ -152,7 +180,7 @@ inline constexpr struct with_timestamp_function_ final {
       return e.with_timestamp(t);
    }
 } with_timestamp = {};
-} // namespace event_stream_timestamp_details_
+} // namespace with_timestamp_details_
 
 namespace concepts {
 

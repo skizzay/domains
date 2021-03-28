@@ -164,7 +164,7 @@ private:
 
    template<typename EventRange>
    void persist(EventRange &&events, event_stream_timestamp_t<Event> commit_timestamp) {
-      auto timestamped_events = events
+      auto timestamped_events = std::forward<EventRange>(events)
          | std::views::transform([commit_timestamp](auto &&event) {
             return skizzay::domains::event_source::with_timestamp(event, commit_timestamp);
          });

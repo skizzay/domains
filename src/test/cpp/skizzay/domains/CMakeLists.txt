@@ -2,6 +2,7 @@ ADD_EXECUTABLE(domains_tests
    concepts.cpp
    main.cpp
    sequence.cpp
+   aggregate/aggregate_root.cpp
    aggregate/entity.cpp
    event_source/commit.cpp
    event_source/event.cpp

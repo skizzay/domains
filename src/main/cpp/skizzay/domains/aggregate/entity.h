@@ -10,7 +10,7 @@ inline namespace entity_id_details_ {
 inline constexpr struct entity_id_function_ final {
    template <typename E>
    requires skizzay::domains::tag_invocable<entity_id_function_, E const &> &&
-      concepts::identifier<
+      skizzay::domains::concepts::identifier<
          skizzay::domains::tag_invoke_result_t<entity_id_function_, E const &>>
    constexpr auto
       operator()(E const &e) const
@@ -22,7 +22,7 @@ inline constexpr struct entity_id_function_ final {
    template <typename E>
    requires requires(E const &e) {
       { e.entity_id() }
-      -> concepts::identifier;
+      -> skizzay::domains::concepts::identifier;
       requires !skizzay::domains::tag_invocable<entity_id_function_, E const &>;
    }
    constexpr auto operator()(E const &e) const noexcept(noexcept(e.entity_id()))
@@ -34,7 +34,7 @@ inline constexpr struct entity_id_function_ final {
    requires requires(E const &e) {
       { *e };
       requires std::invocable<entity_id_function_, decltype(*e)>;
-      requires concepts::identifier<std::invoke_result_t<entity_id_function_, decltype(*e)>>;
+      requires skizzay::domains::concepts::identifier<std::invoke_result_t<entity_id_function_, decltype(*e)>>;
       requires !skizzay::domains::tag_invocable<entity_id_function_, E const &>;
    }
    constexpr auto operator()(E const &e) const

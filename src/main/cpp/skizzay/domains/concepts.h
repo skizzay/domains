@@ -34,4 +34,48 @@ concept sequenced = value_object<T> && std::totally_ordered<T> && requires(T con
     { t.previous() } -> std::same_as<T>;
 };
 
+namespace details_ {
+template<typename T>
+using with_reference = T&;
+}
+
+template<typename T>
+concept referenceable = requires { typename details_::with_reference<T>; };
+
+template<typename T>
+concept dereferenceable = requires (T &t) {
+    { *t } -> referenceable;
+};
+
+}
+
+namespace skizzay::domains {
+
+template <concepts::dereferenceable D>
+using dereferenced_t = decltype(*std::declval<D &>());
+
+template<typename T>
+constexpr decltype(auto) get_reference(T &t) noexcept {
+    if constexpr (concepts::dereferenceable<T>) {
+        return *t;
+    }
+    else {
+        return t;
+    }
+}
+
+
+template<typename>
+struct is_reference_wrapper : std::false_type {
+};
+
+
+template<typename T>
+struct is_reference_wrapper<std::reference_wrapper<T>> : std::true_type {
+};
+
+
+template<typename T>
+inline constexpr bool is_reference_wrapper_v = is_reference_wrapper<T>::value;
+
 }

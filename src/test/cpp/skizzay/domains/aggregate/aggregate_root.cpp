@@ -7,6 +7,7 @@
 #include <catch.hpp>
 #endif
 #include <memory_resource>
+#include <iostream>
 
 using namespace skizzay::domains::aggregate;
 
@@ -30,11 +31,13 @@ struct test_event_c : skizzay::domains::event_source::tagged_event<test_event_c,
 
 using event_type = std::variant<test_event_a, test_event_b, test_event_c>;
 
-struct test_aggregate_root : aggregate_root<test_aggregate_root, event_type> {
+struct test_aggregate_root : aggregate_root_base<test_aggregate_root, event_type> {
+   DECLARE_DOMAINS_AGGREGATE_ROOT(test_aggregate_root, event_type);
+
    std::vector<event_type> applied_events;
 
    test_aggregate_root(event_stream_id_type entity_id) :
-      aggregate_root<test_aggregate_root, event_type>{std::move(entity_id)}
+      aggregate_root_base<test_aggregate_root, event_type>{std::move(entity_id)}
    {
    }
 
@@ -42,6 +45,11 @@ struct test_aggregate_root : aggregate_root<test_aggregate_root, event_type> {
       this->apply_event<test_event_a>();
    }
 
+   void make_c() {
+      this->apply_event<test_event_c>();
+   }
+
+private:
    void on(test_event_a const &a) {
       applied_events.push_back(a);
    }
@@ -49,6 +57,8 @@ struct test_aggregate_root : aggregate_root<test_aggregate_root, event_type> {
    void on(test_event_b const &b) {
       applied_events.push_back(b);
    }
+
+   // test_event_c is handled using the base class's "on" member function
 };
 
 using aggregate_version_type = test_aggregate_root::entity_version_type;
@@ -74,7 +84,16 @@ TEST_CASE("Aggregate Root", "[aggregate_root][aggregate]") {
       SECTION("the event was applied") {
          REQUIRE(1 == std::size(target.applied_events));
          REQUIRE(1 == std::size(uncommitted_events(target)));
-         REQUIRE(0 == target.applied_events.front().index());
+         REQUIRE(0 == target.applied_events.back().index());
+      }
+
+      SECTION("creating an unhandled event") {
+         target.make_c();
+
+         SECTION("ensures that the event was not applied but is uncommitted") {
+            REQUIRE(1 == std::size(target.applied_events));
+            REQUIRE(2 == std::size(uncommitted_events(target)));
+         }
       }
 
       SECTION("after clearing the uncommitted events") {
@@ -94,5 +113,9 @@ TEST_CASE("Aggregate Root", "[aggregate_root][aggregate]") {
          test_event_c{entity_id, event_stream_sequence_type{3}, timestamp}
       };
       load_aggregate_root_from_history(target, history);
+      
+      SECTION("there are no uncommitted events") {
+         REQUIRE( std::ranges::empty(uncommitted_events(target)) );
+      }
    }
 }

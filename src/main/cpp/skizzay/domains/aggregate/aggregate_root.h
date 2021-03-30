@@ -135,24 +135,44 @@ inline constexpr struct load_aggregate_root_from_history_function_ final {
 
 }
 
+namespace concepts {
+
+template<typename AggregateRoot>
+concept aggregate_root = entity<AggregateRoot>
+   && requires (AggregateRoot const &car, AggregateRoot &ar) {
+      { skizzay::domains::aggregate::clear_uncommitted_events(ar) };
+      { skizzay::domains::aggregate::uncommitted_events(car) } -> skizzay::domains::event_source::concepts::event_range;
+   };
+
+template<typename EventRange, typename AggregateRoot>
+concept history_for_aggregate_root = aggregate_root<AggregateRoot>
+   && skizzay::domains::event_source::concepts::event_range<EventRange>
+   && requires(AggregateRoot &ar, EventRange const &er) {
+      { skizzay::domains::aggregate::load_aggregate_root_from_history(ar, er) };
+   };
+}
+
+#define DECLARE_DOMAINS_AGGREGATE_ROOT(...) \
+   friend skizzay::domains::aggregate::aggregate_root_base<__VA_ARGS__>; \
+   using skizzay::domains::aggregate::aggregate_root_base<__VA_ARGS__>::on
+
 
 template<
    typename Entity,
    skizzay::domains::event_source::concepts::event Event,
    typename UncommittedEvents=std::pmr::vector<Event>
 >
-class aggregate_root {
+class aggregate_root_base {
 public:
    using event_type = Event;
    using entity_id_type = skizzay::domains::event_source::event_stream_id_t<Event>;
    using entity_version_type = skizzay::domains::event_source::event_stream_sequence_t<Event>;
 
-   template<skizzay::domains::event_source::concepts::event_range EventRange>
-      requires skizzay::domains::event_source::concepts::event_range_of<EventRange, Event>
+   template<skizzay::domains::event_source::concepts::event_range_of<Event> EventRange>
    constexpr void load_from_history(EventRange const &events) {
       std::ranges::for_each(events, [this](Event const &event) mutable {
          skizzay::domains::event_source::dispatch_event([this](auto const &concrete_event) mutable {
-            // static_cast<Entity *>(this)->on(concrete_event);
+            static_cast<Entity *>(this)->on(concrete_event);
             current_committed_version_ = event_source::event_stream_sequence(concrete_event);
          }, event);
       });
@@ -180,7 +200,7 @@ public:
 protected:
    using allocator_type = typename UncommittedEvents::allocator_type;
 
-   constexpr aggregate_root(entity_id_type entity_id, entity_version_type entity_version, allocator_type alloc={}) noexcept(
+   constexpr aggregate_root_base(entity_id_type entity_id, entity_version_type entity_version, allocator_type alloc={}) noexcept(
       std::is_nothrow_move_constructible_v<entity_id_type> && std::is_nothrow_move_constructible_v<entity_version_type>
    ) :
       entity_id_{std::move(entity_id)},
@@ -189,40 +209,42 @@ protected:
    {
    }
 
-   constexpr aggregate_root(entity_id_type entity_id, allocator_type alloc={}) noexcept(
+   constexpr aggregate_root_base(entity_id_type entity_id, allocator_type alloc={}) noexcept(
       std::is_nothrow_move_constructible_v<entity_id_type> && std::is_nothrow_default_constructible_v<entity_version_type>
    ) :
-      aggregate_root{std::move(entity_id), {}, std::move(alloc)}
+      aggregate_root_base{std::move(entity_id), {}, std::move(alloc)}
    {
    }
 
-   template<skizzay::domains::event_source::concepts::event AggregateRoot, typename ...Args>
-      requires std::is_convertible_v<AggregateRoot, Event>
-   constexpr AggregateRoot make_event(Args &&...args) const {
-      return AggregateRoot{entity_id(), entity_version().next(), std::forward<Args>(args)...};
+   template<skizzay::domains::event_source::concepts::event E, typename ...Args>
+      requires std::is_convertible_v<E, Event>
+   constexpr E make_event(Args &&...args) const {
+      return E{entity_id(), entity_version().next(), std::forward<Args>(args)...};
    }
 
-   template<skizzay::domains::event_source::concepts::event AggregateRoot>
-      requires std::is_constructible_v<Event, std::add_rvalue_reference_t<AggregateRoot>>
-   constexpr void buffer_event(AggregateRoot &&event) {
-      uncommitted_events_.emplace_back(std::forward<AggregateRoot>(event));
+   template<skizzay::domains::event_source::concepts::event E>
+      requires std::is_constructible_v<Event, std::add_rvalue_reference_t<E>>
+   constexpr void buffer_event(E &&event) {
+      uncommitted_events_.emplace_back(std::forward<E>(event));
    }
 
-   template<skizzay::domains::event_source::concepts::event AggregateRoot, typename ...Args>
-      requires std::is_constructible_v<Event, std::add_rvalue_reference_t<AggregateRoot>>
+   template<skizzay::domains::event_source::concepts::event E, typename ...Args>
+      requires std::is_constructible_v<Event, std::add_rvalue_reference_t<E>>
    constexpr void apply_event(Args &&...args) {
-      AggregateRoot event = this->make_event<AggregateRoot>(std::forward<Args>(args)...);
-      static_cast<Entity *>(this)->on(const_cast<AggregateRoot const &>(event));
+      E event = this->make_event<E>(std::forward<Args>(args)...);
+      skizzay::domains::event_source::dispatch_event([this](auto const &e) mutable {
+         static_cast<Entity *>(this)->on(e);
+      }, event);
       buffer_event(std::move(event));
    }
 
-private:
-   template<skizzay::domains::event_source::concepts::event AggregateRoot>
-   constexpr void on(AggregateRoot const &) const noexcept {
+   template<skizzay::domains::event_source::concepts::event E>
+   constexpr void on(E const &) const noexcept {
       // No-op
       // Placeholder for when Entity does not care about a particular event
    }
 
+private:
    entity_id_type entity_id_;
    entity_version_type current_committed_version_;
    UncommittedEvents uncommitted_events_;

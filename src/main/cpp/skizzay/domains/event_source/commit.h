@@ -122,4 +122,59 @@ private:
    commit_timestamp_type commit_timestamp_;
    std::variant<std::tuple<Sequence, Sequence>, error_type> value_;
 };
+
+
+template<
+   skizzay::domains::concepts::identifier EventStreamId,
+   skizzay::domains::concepts::sequenced EventStreamSequence
+>
+struct precommit final {
+   constexpr precommit(EventStreamId event_stream_id, EventStreamSequence precommit_sequence) noexcept :
+      event_stream_id_{std::move(event_stream_id)},
+      precommit_sequence_{std::move(precommit_sequence)}
+   {
+   }
+
+   constexpr EventStreamId event_stream_id() const noexcept {
+      return event_stream_id_;
+   }
+
+   constexpr EventStreamSequence precommit_sequence() const noexcept {
+      return precommit_sequence_;
+   }
+
+   template<
+      skizzay::domains::concepts::identifier CommitId,
+      skizzay::domains::concepts::timestamp CommitTimestamp,
+      typename Error=std::exception_ptr
+   >
+   constexpr auto commit_success(CommitId commit_id, CommitTimestamp commit_timestamp, std::size_t const num_events, [[maybe_unused]] Error e={}) const noexcept {
+      return basic_commit<CommitId, EventStreamId, EventStreamSequence, CommitTimestamp, Error> {
+         std::move(commit_id),
+         event_stream_id_,
+         std::move(commit_timestamp),
+         precommit_sequence_.next(),
+         EventStreamSequence{precommit_sequence_.value() + static_cast<typename EventStreamSequence::value_type>(num_events)}
+      };
+   }
+
+   template<
+      skizzay::domains::concepts::identifier CommitId,
+      skizzay::domains::concepts::timestamp CommitTimestamp,
+      typename Error
+   >
+   constexpr auto commit_error(CommitId commit_id, CommitTimestamp commit_timestamp, Error e) const noexcept {
+      return basic_commit<CommitId, EventStreamId, EventStreamSequence, CommitTimestamp, Error> {
+         std::move(commit_id),
+         event_stream_id_,
+         std::move(commit_timestamp),
+         std::move(e)
+      };
+   }
+
+private:
+   EventStreamId event_stream_id_;
+   EventStreamSequence precommit_sequence_;
+};
+
 }

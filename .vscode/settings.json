@@ -59,7 +59,10 @@
         "set": "cpp",
         "regex": "cpp",
         "coroutine": "cpp",
-        "stop_token": "cpp"
+        "stop_token": "cpp",
+        "thread": "cpp",
+        "mutex": "cpp",
+        "shared_mutex": "cpp"
     },
     "cmake.configureSettings": {
         "BUILD_TESTS": "ON",

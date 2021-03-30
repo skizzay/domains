@@ -373,11 +373,23 @@ struct tagged_event : public basic_event<StreamIdType, StreamSequenceType, Strea
    using basic_event<StreamIdType, StreamSequenceType, StreamTimestampType>::basic_event;
 };
 
+namespace details_ {
+
+template<typename>
+struct is_variant_impl : std::false_type {
+};
+
+template<typename ...Ts>
+struct is_variant_impl<std::variant<Ts...>> : std::true_type {
+};
+
+template<typename T>
+concept is_variant = is_variant_impl<T>::value;
+
+}
 
 inline namespace dispatch_event_details_ {
 inline constexpr struct dispatch_event_function_ final {
-   template <typename... T>
-   using variant_t = std::variant<T...>;
 
    template <typename H, typename E>
    requires tag_invocable<dispatch_event_function_, H, E const &>
@@ -388,16 +400,21 @@ inline constexpr struct dispatch_event_function_ final {
 
    template <typename H, concepts::event... E>
    requires (!tag_invocable<dispatch_event_function_, H, std::variant<E...> const &>)
+      && std::conjunction_v<std::is_invocable<dispatch_event_function_, H, E const &>...>
    constexpr auto operator()(H &&h, std::variant<E...> const &v) const {
       return std::visit([this, &h](concepts::event auto const &e) {
          return std::invoke(*this, std::forward<H>(h), e);
-         }, static_cast<std::variant<E...> const &>(v));
+         }, v);
    }
 
    template <typename H, concepts::event E>
-   requires (!tag_invocable<dispatch_event_function_, H, E const &> && std::invocable<H, E const &>)
-   constexpr auto operator()(H &&h, E const &e) const
-      noexcept(std::is_nothrow_invocable_v<H, E const &>) {
+   requires (!tag_invocable<dispatch_event_function_, H, E const &>)
+      && std::invocable<H, E const &>
+      && (!details_::is_variant<E>)
+   constexpr auto operator()(H &&h, E const &e) const noexcept(
+      std::is_nothrow_invocable_v<H, E const &>
+   ) -> std::invoke_result_t<H, E const &>
+   {
       return std::invoke(std::forward<H>(h), e);
    }
 
@@ -406,7 +423,7 @@ inline constexpr struct dispatch_event_function_ final {
       && (!std::invocable<H, E const &>)
       && std::invocable<dispatch_event_function_, H, skizzay::domains::dereferenced_t<E>>
    constexpr auto operator()(H &&h, E const &e) const noexcept(std::is_nothrow_invocable_v<dispatch_event_function_, H, decltype(*e)>) {
-      return std::invoke(*this, std::forward<H>(h), *e);
+      return std::invoke(*this, std::forward<H>(h), skizzay::domains::get_reference(e));
    }
 } dispatch_event = {};
 } // namespace dispatch_event_details_

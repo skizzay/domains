@@ -1,5 +1,6 @@
 #pragma once
 
+#include <skizzay/domains/event_source/commit.h>
 #include <skizzay/domains/event_source/event_stream.h>
 
 namespace skizzay::domains::event_source {

@@ -67,7 +67,6 @@ TEST_CASE("Event Stream", "[event_source, event_stream]") {
 
    SECTION("event_stream matches on events and event_stream_id") {
       REQUIRE(skizzay::domains::concepts::identifier<decltype(target.event_stream_id())>);
-      REQUIRE((concepts::event_range<decltype(skizzay::domains::event_source::events(target, begin))>));
       REQUIRE((concepts::event_range<decltype(skizzay::domains::event_source::events(target, begin, end))>));
       REQUIRE(concepts::event_stream<event_stream_fake<test_event>>);
    }

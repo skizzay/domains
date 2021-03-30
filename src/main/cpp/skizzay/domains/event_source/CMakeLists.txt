@@ -6,5 +6,6 @@ TARGET_SOURCES(domains_event_source INTERFACE
       event_stream.h
       event.h
       generator.h
+      null_mutex.h
       inmemory/event_store.h
    )

@@ -106,7 +106,7 @@ TEST_CASE("In-Memory Event Store", "[event_source, event_store, event_stream]") 
 
             SECTION("when we retrieve the events") {
                std::vector<test_event> actual_events;
-               std::ranges::copy(events(event_stream, stream_sequence_type{0}, stream_sequence_type{2}), std::back_inserter(actual_events));
+               std::ranges::copy(events(event_stream, stream_sequence_type{1}, stream_sequence_type{3}), std::back_inserter(actual_events));
 
                SECTION("then all of the events have been returned") {
                   REQUIRE(2 == std::ranges::size(actual_events));

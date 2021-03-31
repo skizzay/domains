@@ -1,5 +1,6 @@
-#include <skizzay/domains/event_source/inmemory/event_store.h>
+#include <skizzay/domains/event_source/inmemory/event_stream_factory.h>
 #include <skizzay/domains/event_source/event_stream.h>
+#include <skizzay/domains/event_source/null_mutex.h>
 #include <skizzay/domains/sequence.h>
 #include <chrono>
 #if __has_include(<catch / catch.hpp>)
@@ -10,6 +11,7 @@
 
 using namespace skizzay::domains::event_source;
 using namespace std::literals;
+using mutex_type = null_mutex<true>;
 
 namespace {
 
@@ -20,7 +22,7 @@ using test_event = tagged_event<struct test, stream_id_type, stream_sequence_typ
 using commit_timestamp_provider = decltype(&std::chrono::high_resolution_clock::now);
 
 auto make_target = [](auto commit_id_provider) {
-   using target_type = inmemory::event_store<test_event, decltype(commit_id_provider), commit_timestamp_provider>;
+   using target_type = inmemory::event_stream_factory<test_event, decltype(commit_id_provider), commit_timestamp_provider, mutex_type>;
    return target_type(
       std::move(commit_id_provider),
       &std::chrono::high_resolution_clock::now
@@ -28,7 +30,7 @@ auto make_target = [](auto commit_id_provider) {
 };
 }
 
-TEST_CASE("In-Memory Event Store", "[event_source, event_store, event_stream]") {
+TEST_CASE("In-Memory Event Store", "[event_source, event_stream_factory, event_stream]") {
    int commit_number = 0;
    auto target = make_target([commit_number]() mutable {
       return "commit_id_" + std::to_string(++commit_number); 

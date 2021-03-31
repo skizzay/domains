@@ -67,5 +67,6 @@
     "cmake.configureSettings": {
         "BUILD_TESTS": "ON",
         "CMAKE_TOOLCHAIN_FILE": "${HOME}/Documents/vcpkg/scripts/buildsystems/vcpkg.cmake"
-    }
+    },
+    "C_Cpp.intelliSenseEngineFallback": "Enabled"
 }

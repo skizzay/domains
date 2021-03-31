@@ -113,7 +113,6 @@ template<typename T>
 concept entity = requires(T const &tc, T &t) {
    { skizzay::domains::aggregate::entity_id(tc) } -> skizzay::domains::concepts::identifier;
    { skizzay::domains::aggregate::entity_version(tc) } -> skizzay::domains::concepts::sequenced;
-   requires std::is_constructible_v<T, entity_id_t<T>>;
 };
 
 }

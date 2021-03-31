@@ -1,2 +1,5 @@
-ADD_SUBDIRECTORY(skizzay/domains/aggregate)
-ADD_SUBDIRECTORY(skizzay/domains/event_source)
+ADD_LIBRARY(skizzay_domains INTERFACE)
+TARGET_INCLUDE_DIRECTORIES(skizzay_domains INTERFACE
+   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+   $<INSTALL_INTERFACE:>
+)

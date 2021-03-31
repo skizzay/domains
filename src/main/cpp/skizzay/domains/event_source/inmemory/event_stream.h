@@ -6,22 +6,19 @@
 #include <skizzay/domains/event_source/event_stream.h>
 #include <skizzay/domains/event_source/generator.h>
 #include <algorithm>
-#include <exception>
 #include <memory>
 #include <mutex>
 #include <optional>
 #include <shared_mutex>
-#include <system_error>
 #include <type_traits>
-#include <unordered_map>
 #include <vector>
 
 namespace skizzay::domains::event_source::inmemory {
 
 namespace details_ {
-template<typename Event, typename CommitIdProvider, typename CommitTimestampProvider>
-struct event_stream_state : std::enable_shared_from_this<event_stream_state<Event, CommitIdProvider, CommitTimestampProvider>> {
-   mutable std::shared_mutex events_mutex_;
+template<typename Event, typename CommitIdProvider, typename CommitTimestampProvider, typename Mutex>
+struct event_stream_state : std::enable_shared_from_this<event_stream_state<Event, CommitIdProvider, CommitTimestampProvider, Mutex>> {
+   [[no_unique_address]] mutable Mutex events_mutex_;
    event_stream_id_t<Event> event_stream_id_;
    std::pmr::vector<Event> events_;
    CommitIdProvider commit_id_provider_;
@@ -44,22 +41,22 @@ struct event_stream_state : std::enable_shared_from_this<event_stream_state<Even
 
 }
 
-template<typename Event, typename CommitIdProvider, typename CommitTimestampProvider>
+template<typename Event, typename CommitIdProvider, typename CommitTimestampProvider, typename Mutex>
    requires concepts::event<Event>
       && std::invocable<CommitIdProvider> && skizzay::domains::concepts::identifier<std::invoke_result_t<CommitIdProvider>>
       && std::invocable<CommitTimestampProvider> && skizzay::domains::concepts::timestamp<std::invoke_result_t<CommitTimestampProvider>>
       && std::same_as<std::invoke_result_t<CommitTimestampProvider>, event_stream_timestamp_t<Event>>
-class event_stream : public skizzay::domains::event_source::event_stream_base<event_stream<Event, CommitIdProvider, CommitTimestampProvider>, Event> {
+class event_stream : public skizzay::domains::event_source::event_stream_base<event_stream<Event, CommitIdProvider, CommitTimestampProvider, Mutex>, Event> {
    using event_id_type = event_stream_id_t<Event>;
    using event_stream_sequence_type = event_stream_sequence_t<Event>;
 
-   friend event_stream_base<event_stream<Event, CommitIdProvider, CommitTimestampProvider>, Event>;
+   friend event_stream_base<event_stream<Event, CommitIdProvider, CommitTimestampProvider, Mutex>, Event>;
 
 public:
    using event_type = Event;
    using commit_type = basic_commit<std::invoke_result_t<CommitIdProvider>, event_id_type, event_stream_sequence_type, event_stream_timestamp_t<event_type>>;
 
-   explicit event_stream(std::shared_ptr<details_::event_stream_state<Event, CommitIdProvider, CommitTimestampProvider>> state) noexcept :
+   explicit event_stream(std::shared_ptr<details_::event_stream_state<Event, CommitIdProvider, CommitTimestampProvider, Mutex>> state) noexcept :
       state_{std::move(state)}
    {
    }
@@ -83,7 +80,8 @@ public:
    }
 
 private:
-   std::shared_ptr<details_::event_stream_state<Event, CommitIdProvider, CommitTimestampProvider>> state_;
+   std::shared_ptr<details_::event_stream_state<Event, CommitIdProvider, CommitTimestampProvider, Mutex>> state_;
+   // These will be populated when we prepare for put.
    std::optional<std::remove_cvref_t<std::invoke_result_t<CommitIdProvider>>> commit_id_;
    std::optional<event_stream_timestamp_t<Event>> commit_timestamp_;
 
@@ -91,7 +89,7 @@ private:
       return std::min<std::ptrdiff_t>(x.value() - 1, std::size(state_->events_));
    }
    
-   std::shared_mutex & get_mutex() const noexcept {
+   Mutex & get_mutex() const noexcept {
       return state_->events_mutex_;
    }
 
@@ -128,66 +126,6 @@ private:
       if (events.size() > last_sequence.value()) {
          events.erase(events.begin() + last_sequence.value(), events.end());
       }
-   }
-};
-
-
-template<typename Event, typename CommitIdProvider, typename CommitTimestampProvider>
-   requires concepts::event<Event>
-      && std::invocable<CommitIdProvider> && skizzay::domains::concepts::identifier<std::invoke_result_t<CommitIdProvider>>
-      && std::invocable<CommitTimestampProvider> && skizzay::domains::concepts::timestamp<std::invoke_result_t<CommitTimestampProvider>>
-      && std::same_as<std::invoke_result_t<CommitTimestampProvider>, event_stream_timestamp_t<Event>>
-class event_store {
-   using key_type = event_stream_id_t<Event>;
-   using event_stream_state_type = details_::event_stream_state<Event, CommitIdProvider, CommitTimestampProvider>;
-   using value_type = std::shared_ptr<event_stream_state_type>;
-   using event_stream_table = std::pmr::unordered_map<key_type, value_type>;
-
-   mutable std::mutex mutex_;
-   CommitIdProvider commit_id_provider_;
-   CommitTimestampProvider commit_timestamp_provider_;
-   event_stream_table event_streams_;
-
-   value_type allocate_event_stream_state(key_type const &key) {
-      auto value = std::allocate_shared<event_stream_state_type>(
-         event_streams_.get_allocator(),
-         key,
-         event_streams_.get_allocator().resource(),
-         commit_id_provider_,
-         commit_timestamp_provider_
-      );
-      event_streams_.emplace(key, value);
-      return value;
-   }
-
-   value_type get_event_stream_state(key_type const &key) {
-      std::scoped_lock lock{mutex_};
-      auto const state = event_streams_.find(key);
-      if (state == event_streams_.end()) {
-         return allocate_event_stream_state(key);
-      }
-      else {
-         return state->second;
-      }
-   }
-
-public:
-   using event_stream_type = event_stream<Event, CommitIdProvider, CommitTimestampProvider>;
-
-   explicit event_store(
-      CommitIdProvider commit_id_provider,
-      CommitTimestampProvider commit_timestamp_provider,
-      typename event_stream_table::allocator_type alloc={}
-   ) noexcept :
-      mutex_{},
-      commit_id_provider_{std::move(commit_id_provider)},
-      commit_timestamp_provider_{std::move(commit_timestamp_provider)},
-      event_streams_{std::move(alloc)}
-   {
-   }
-
-   event_stream_type get_event_stream(key_type const &event_stream_id) {
-      return event_stream_type{get_event_stream_state(event_stream_id)};
    }
 };
 

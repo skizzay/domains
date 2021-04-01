@@ -2,13 +2,13 @@ ADD_EXECUTABLE(domains_tests
    concepts.cpp
    main.cpp
    sequence.cpp
-   aggregate/aggregate_root.cpp
-   aggregate/entity.cpp
-   aggregate/entity_store.cpp
-   event_source/commit.cpp
-   event_source/event.cpp
-   event_source/event_stream.cpp
-   event_source/inmemory/event_stream_factory.cpp
+   aggregate_root.cpp
+   entity.cpp
+   entity_store.cpp
+   commit.cpp
+   event.cpp
+   event_stream.cpp
+   inmemory/event_stream_factory.cpp
 )
 TARGET_INCLUDE_DIRECTORIES(domains_tests PRIVATE
    ${CONAN_INCLUDE_DIRS_CATCH}

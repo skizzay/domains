@@ -47,6 +47,9 @@ concept dereferenceable = requires (T &t) {
     { *t } -> referenceable;
 };
 
+template<typename T, typename U>
+concept same_reference_removed = std::same_as<std::remove_reference_t<T>, std::remove_reference_t<U>>;
+
 }
 
 namespace skizzay::domains {

@@ -317,6 +317,14 @@ using event_stream_sequence_t = typename details_::event_stream_sequence_type_im
 template<typename T>
 using event_stream_timestamp_t = typename details_::event_stream_timestamp_type_impl<T>::type;
 
+namespace concepts {
+
+template<typename L, typename R>
+concept event_type_compatible = same_reference_removed<event_stream_id_t<L>, event_stream_id_t<R>>
+   && same_reference_removed<event_stream_sequence_t<L>, event_stream_sequence_t<R>>
+   && same_reference_removed<event_stream_timestamp_t<L>, event_stream_timestamp_t<R>>;
+}
+
 
 template <
    concepts::identifier StreamIdType,

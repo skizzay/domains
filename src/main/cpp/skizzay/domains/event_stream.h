@@ -7,6 +7,7 @@
 #include <limits>
 #include <mutex>
 #include <ranges>
+#include <sstream>
 
 namespace skizzay::domains {
 template<concepts::sequenced Sequence>
@@ -18,7 +19,7 @@ inline constexpr struct events_function_ final {
    constexpr auto operator()(EventStream const &e) const noexcept(
       std::is_nothrow_invocable_v<events_function_, EventStream const &, event_stream_sequence_t<EventStream>, event_stream_sequence_t<EventStream>>
    ) -> std::invoke_result_t<events_function_, EventStream const &, event_stream_sequence_t<EventStream>, event_stream_sequence_t<EventStream>> {
-      return std::invoke(*this, static_cast<EventStream const &>(e), event_stream_sequence_t<EventStream>{}, max_ending_exclusive_version<event_stream_sequence_t<EventStream>>);
+      return std::invoke(*this, static_cast<EventStream const &>(e), event_stream_sequence_t<EventStream>{1}, max_ending_exclusive_version<event_stream_sequence_t<EventStream>>);
    }
 
    template <typename EventStream>
@@ -106,20 +107,6 @@ struct commit_type_impl<EventStream, EventRange> {
 template<concepts::event_stream EventStream, concepts::event_range EventRange>
 using commit_t = typename details_::commit_type_impl<EventStream, EventRange>::type;
 
-namespace concepts {
-
-template<typename EventStream, typename EventRange>
-concept event_range_writer = event_stream<EventStream>
-   && event_range<EventRange>
-   && std::same_as<event_stream_id_t<EventRange>, event_stream_id_t<EventStream>>
-   && std::same_as<event_stream_sequence_t<EventRange>, event_stream_sequence_t<EventStream>>
-   && std::same_as<event_stream_timestamp_t<EventRange>, event_stream_timestamp_t<EventStream>>
-   && std::same_as<event_stream_id_t<EventRange>, event_stream_id_t<commit_t<EventStream, EventRange>>>
-   && std::same_as<event_stream_timestamp_t<EventRange>, decltype(std::declval<commit_t<EventStream, EventRange>>().commit_timestamp())>
-   && std::same_as<event_stream_sequence_t<EventRange>, decltype(std::declval<commit_t<EventStream, EventRange>>().event_stream_starting_sequence())>;
-
-}
-
 template<concepts::event_stream EventStream, concepts::sequenced Sequence>
 using events_t = decltype(events(std::declval<EventStream>(), std::declval<Sequence>()));
 
@@ -155,7 +142,7 @@ public:
       precommit const result{event_stream_id(derived_const()), derived().last_committed_sequence()};
       std::size_t num_events = 0;
       try {
-         derived().persist(as_validated_events(std::forward<EventRange>(events), result, num_events));
+         derived().persist(std::forward<EventRange>(events));
          return result.commit_success(derived_const().commit_id(), derived_const().commit_timestamp(), num_events);
       }
       catch (...) {
@@ -171,34 +158,6 @@ private:
    template<typename Sequence>
    constexpr Sequence ending_sequence(Sequence const precommit_sequence, std::size_t const num_events) const noexcept {
       return Sequence{precommit_sequence.value() + static_cast<typename Sequence::value_type>(num_events)};
-   }
-
-   template<typename EventRange, typename Precommit>
-   constexpr auto as_validated_events(EventRange &&events, Precommit const &p, std::size_t &num_events) const {
-      if (std::ranges::empty(events)) {
-         throw std::range_error{"Empty event range provided"};
-      }
-      else {
-         auto validate_event = [last_sequence=p.precommit_sequence(), expected_event_stream_id=p.event_stream_id()](auto &&event) mutable {
-            if (event_stream_id(event) != expected_event_stream_id) {
-               throw std::invalid_argument{"Event stream id does match the event's id"};
-            }
-            else if (event_stream_sequence(event) != last_sequence.next()) {
-               throw concurrency_collision{"Expected event stream sequence was not found"};
-            }
-            else {
-               last_sequence = last_sequence.next();
-               return event;
-            }
-         };
-         auto increment_event_count = [&num_events](auto &&event) mutable noexcept {
-            ++num_events;
-            return event;
-         };
-         return std::forward<EventRange>(events)
-            | std::views::transform(validate_event)
-            | std::views::transform(increment_event_count);
-      }
    }
 
    constexpr EventStream & derived() noexcept {

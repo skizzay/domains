@@ -3,6 +3,8 @@
 #include <skizzay/domains/null_mutex.h>
 #include <skizzay/domains/sequence.h>
 #include <chrono>
+#include <vector>
+#include <iostream>
 #if __has_include(<catch / catch.hpp>)
 #include <catch/catch.hpp>
 #elif __has_include(<catch.hpp>)
@@ -22,7 +24,7 @@ using test_event = tagged_event<struct test, stream_id_type, stream_sequence_typ
 using commit_timestamp_provider = decltype(&std::chrono::high_resolution_clock::now);
 
 auto make_target = [](auto commit_id_provider) {
-   using target_type = inmemory::event_stream_factory<test_event, decltype(commit_id_provider), commit_timestamp_provider, mutex_type>;
+   using target_type = inmemory::event_stream_store<test_event, decltype(commit_id_provider), commit_timestamp_provider, mutex_type>;
    return target_type(
       std::move(commit_id_provider),
       &std::chrono::high_resolution_clock::now
@@ -55,14 +57,15 @@ TEST_CASE("In-Memory Event Store", "[event_source, event_stream_factory, event_s
       auto event_stream = target.get_event_stream(stream_id);
 
       SECTION("is initially empty") {
-         REQUIRE(event_stream.empty());
+         auto r = events(event_stream);
+         REQUIRE(std::begin(r) == std::end(r));
       }
 
       SECTION("given raw_events with unexpected starting sequence") {
          std::vector raw_events{test_event{stream_id, stream_sequence_type{22}}, test_event{stream_id, stream_sequence_type{23}}};
 
          SECTION("when we put items into the stream") {
-            auto commit = put_events(event_stream, raw_events);
+            auto commit = put_event_stream(target, event_stream, raw_events);
             SECTION("then a concurrency collision was encountered") {
                REQUIRE(commit.error());
             }
@@ -73,7 +76,7 @@ TEST_CASE("In-Memory Event Store", "[event_source, event_stream_factory, event_s
          std::vector raw_events{test_event{stream_id, stream_sequence_type{1}}, test_event{stream_id, stream_sequence_type{23}}};
 
          SECTION("when we put items into the stream") {
-            auto commit = put_events(event_stream, raw_events);
+            auto commit = put_event_stream(target, event_stream, raw_events);
             SECTION("then a concurrency collision was encountered") {
                REQUIRE(commit.error());
             }
@@ -84,7 +87,7 @@ TEST_CASE("In-Memory Event Store", "[event_source, event_stream_factory, event_s
          std::vector raw_events{test_event{stream_id + " not the same", stream_sequence_type{1}}, test_event{stream_id, stream_sequence_type{2}}};
 
          SECTION("when we put items into the stream") {
-            auto commit = put_events(event_stream, raw_events);
+            auto commit = put_event_stream(target, event_stream, raw_events);
             SECTION("then an invalid argument was encountered") {
                REQUIRE(commit.error());
             }
@@ -95,7 +98,7 @@ TEST_CASE("In-Memory Event Store", "[event_source, event_stream_factory, event_s
          std::vector raw_events{test_event{stream_id, stream_sequence_type{1}}, test_event{stream_id, stream_sequence_type{2}}};
 
          SECTION("when we put items into the stream") {
-            auto commit = put_events(event_stream, raw_events);
+            auto commit = put_event_stream(target, event_stream, raw_events);
 
             SECTION("then the commit will have the begin and end sequence of the events put into the stream") {
                REQUIRE(stream_sequence_type{1} == commit.event_stream_starting_sequence());

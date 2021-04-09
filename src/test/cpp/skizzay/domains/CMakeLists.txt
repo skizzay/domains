@@ -8,6 +8,7 @@ ADD_EXECUTABLE(domains_tests
    commit.cpp
    event.cpp
    event_stream.cpp
+   validated_event_range.cpp
    inmemory/event_stream_factory.cpp
 )
 TARGET_INCLUDE_DIRECTORIES(domains_tests PRIVATE

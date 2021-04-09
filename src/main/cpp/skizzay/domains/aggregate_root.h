@@ -171,10 +171,8 @@ public:
    template<concepts::event_range_of<Event> EventRange>
    constexpr void load_from_history(EventRange const &events) {
       std::ranges::for_each(events, [this](Event const &event) mutable {
-         dispatch_event([this](auto const &concrete_event) mutable {
-            static_cast<Entity *>(this)->on(concrete_event);
-            current_committed_version_ = event_stream_sequence(concrete_event);
-         }, event);
+         handle_event(event);
+         current_committed_version_ = event_stream_sequence(event);
       });
    }
 
@@ -232,10 +230,25 @@ protected:
       requires std::is_constructible_v<Event, std::add_rvalue_reference_t<E>>
    constexpr void apply_event(Args &&...args) {
       E event = this->make_event<E>(std::forward<Args>(args)...);
-      dispatch_event([this](auto const &e) mutable {
-         static_cast<Entity *>(this)->on(e);
-      }, event);
+      handle_event(event);
       buffer_event(std::move(event));
+   }
+
+   template<concepts::event E>
+      requires (!std::same_as<E, Event>)
+   constexpr void handle_event(E const &e) {
+      static_cast<Entity *>(this)->on(dereference(e));
+   }
+
+   constexpr void handle_event(Event const &event) {
+      dispatch_event([this]<concepts::event E>(E const &e) mutable {
+         if constexpr (std::same_as<E, std::remove_reference_t<dereferenced_t<Event>>>) {
+            static_cast<Entity *>(this)->on(dereference(e));
+         }
+         else {
+            handle_event(dereference(e));
+         }
+      }, event);
    }
 
    template<concepts::event E>

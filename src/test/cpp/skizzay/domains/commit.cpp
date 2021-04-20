@@ -29,8 +29,8 @@ TEST_CASE("Successful commit", "[event_source, commit]") {
    std::string const commit_id{"commit_id"};
    std::string const event_stream_id{"event_string_id"};
    auto const timestamp = std::chrono::steady_clock::now();
-   std::vector const events = {test_event{event_stream_id, test_sequence{3}, timestamp}, test_event{event_stream_id, test_sequence{4}, timestamp + std::chrono::seconds{1}}};
-   test_commit const target{commit_id, event_stream_id, timestamp, test_sequence{3}, test_sequence{4}};
+   std::vector const events = {test_event{event_stream_id, test_sequence{std::uint16_t{3}}, timestamp}, test_event{event_stream_id, test_sequence{std::uint16_t{4}}, timestamp + std::chrono::seconds{1}}};
+   test_commit const target{commit_id, event_stream_id, timestamp, test_sequence{std::uint16_t{3}}, test_sequence{std::uint16_t{4}}};
 
    SECTION("commit_id should be pass-thru") {
       REQUIRE(commit_id == target.commit_id());

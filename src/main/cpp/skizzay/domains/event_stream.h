@@ -44,6 +44,49 @@ inline constexpr struct events_function_ final {
 } events = {};
 } // namespace events_details_
 
+inline namespace event_stream_head_details_ {
+inline constexpr struct event_stream_head_function_ final {
+
+   template <typename EventStream>
+   requires tag_invocable<event_stream_head_function_, EventStream const &>
+      && concepts::event_stream_head<tag_invoke_result_t<event_stream_head_function_, EventStream const &>>
+   constexpr auto operator()(EventStream const &e) const
+      noexcept(nothrow_tag_invocable<event_stream_head_function_, EventStream const &>)
+         -> tag_invoke_result_t<event_stream_head_function_, EventStream const &> {
+      return tag_invoke(*this, static_cast<EventStream const &>(e));
+   }
+
+   template <typename EventStream>
+   requires (!tag_invocable<event_stream_head_function_, EventStream const &>)
+      && requires(EventStream const &e) {
+         { e.event_stream_head() } -> concepts::event_stream_head;
+      }
+   constexpr auto operator()(EventStream const &e)
+      -> std::tuple<event_stream_id_t<EventStream>, event_stream_sequence_t<EventStream>, event_stream_timestamp_t<EventStream>> {
+      return e.event_stream_head();
+   }
+
+   template <typename EventStream>
+   requires (!tag_invocable<event_stream_head_function_, EventStream const &>)
+      && concepts::dereferenceable<EventStream>
+   constexpr auto operator()(EventStream const &e)
+      -> std::tuple<event_stream_id_t<EventStream>, event_stream_sequence_t<EventStream>, event_stream_timestamp_t<EventStream>> {
+         return std::invoke(*this, get_reference(e));
+   }
+
+   template <typename EventStream>
+   requires (!tag_invocable<event_stream_head_function_, EventStream const &>)
+   constexpr auto operator()(EventStream const &e)
+      -> std::tuple<event_stream_id_t<EventStream>, event_stream_sequence_t<EventStream>, event_stream_timestamp_t<EventStream>> {
+      return std::make_tuple(
+         event_stream_id(e),
+         event_stream_sequence(e),
+         event_stream_timestamp(e)
+      );
+   }
+} event_stream_head = {};
+} // namespace events_details_
+
 inline namespace put_events_details_ {
 inline constexpr struct put_events_function_ final {
    template<typename EventStream, concepts::event_range EventRange>
@@ -84,6 +127,9 @@ concept event_stream = event<typename T::event_type>
       >;
 };
 }
+
+template<concepts::event_stream EventStream>
+using event_stream_head_t = std::tuple<event_stream_id_t<EventStream>, event_stream_sequence_t<EventStream>, event_stream_sequence_t<EventStream>>;
 
 namespace details_ {
 template<typename, typename, typename=void>

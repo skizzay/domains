@@ -15,12 +15,12 @@ inline constexpr auto pass_thru = []<typename F>(F &&f) {
    });
 };
 
-inline constexpr auto ensure_nonempty = []<std::ranges::viewable_range Range>(Range &&r) {
+inline constexpr auto ensure_nonempty = []<std::ranges::range Range>(Range &r) {
       if (std::ranges::empty(std::forward<Range>(r))) {
          throw std::range_error{"Range is empty"};
       }
       else {
-         return std::ranges::views::all(std::forward<Range>(r));
+         return std::forward<Range>(r);
       }
    };
 
@@ -57,5 +57,15 @@ inline constexpr auto ensure_event_id_matches = []<concepts::identifier EventStr
          }
       });
    };
+
+template<concepts::event_stream_head EventStreamHead, concepts::event_range EventRange>
+inline constexpr auto validate_commit_range(EventStreamHead const &esh, EventRange &er) {
+   if (std::ranges::empty(er)) {
+      throw std::range_error{"Range is empty"};
+   }
+   else {
+      return er | ensure_event_is_sequenced(event_stream_sequence(esh).next()) | ensure_event_id_matches(event_stream_id(esh));
+   }
+}
 
 }

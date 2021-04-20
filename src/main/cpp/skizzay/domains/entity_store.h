@@ -124,7 +124,7 @@ concept entity_factory = entity<Entity>
 
 template<typename EntityStore, typename Entity>
 concept entity_store = entity_factory<EntityStore, Entity>
-   && requires (EntityStore &es, Entity const &e) {
+   && requires (EntityStore es, Entity e) {
       { put_entity(es, e) };
    };
 }

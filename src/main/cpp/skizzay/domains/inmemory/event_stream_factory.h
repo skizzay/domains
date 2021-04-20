@@ -1,6 +1,7 @@
 #pragma once
 
 #include <skizzay/domains/inmemory/event_stream.h>
+#include <skizzay/domains/commit.h>
 #include <skizzay/domains/event_stream_factory.h>
 #include <skizzay/domains/validated_event_range.h>
 #include <iterator>
@@ -79,29 +80,21 @@ class event_stream_store {
       }
    }
 
-   constexpr auto validate(precommit<event_stream_id_t<Event>, event_stream_sequence_t<Event>> const &p) const noexcept {
-      return ensure_event_id_matches(p.event_stream_id())
-            | ensure_event_is_sequenced(p.precommit_sequence().next());
-   }
-
    constexpr auto apply_timestamp(event_stream_timestamp_t<Event> const &timestamp) const noexcept {
       return std::ranges::views::transform([&timestamp](Event e) {
          return with_timestamp(e, timestamp);
       });
    }
 
-   constexpr void persist_changes(value_type state) {
-      event_stream_id_t<Event> id = state->event_stream_id_;
-      auto [i, result] = event_streams_.try_emplace(std::move(id), std::move(state));
+   template<concepts::event_range_of<Event> EventRange>
+   constexpr void persist_changes(event_stream<Event, Mutex> stream, EventRange &&events) {
+      event_stream_id_t<Event> id = event_stream_id(stream);
+      stream.append_events(events | apply_timestamp(commit_timestamp()));
+      std::scoped_lock lock{mutex_};
+      auto [i, result] = event_streams_.try_emplace(std::move(id), std::move(stream.state_));
 
       if (!result) {
-         i->second = std::move(state);
-      }
-   }
-
-   constexpr void rollback_to(event_stream_state_type &state, event_stream_sequence_t<Event> target) {
-      if (state.events_.size() > target.value()) {
-         state.events_.erase(state.events_.begin() + target.value(), state.events_.end());
+         i->second = std::move(stream.state_);
       }
    }
 
@@ -125,24 +118,16 @@ public:
    }
 
    template<concepts::event_range_of<Event> EventRange>
-   auto put_event_stream(event_stream_type stream, EventRange &&range) {
-      precommit p{event_stream_id(stream), event_stream_sequence(stream)};
-      std::scoped_lock lock{mutex_};
-      auto timestamp{commit_timestamp()};
+   auto put_event_stream(event_stream_type stream, EventRange &range) {
+      std::scoped_lock stream_lock{stream.state_->events_mutex_};
+      auto head = stream.state_->event_stream_head();
       try {
-         std::ranges::copy(
-            ensure_nonempty(std::forward<EventRange>(range))
-                  | validate(p)
-                  | apply_timestamp(timestamp),
-            std::back_inserter(stream.state_->events_)
-         );
-         auto new_sequence{event_stream_sequence(stream)};
-         persist_changes(std::move(stream.state_));
-         return p.commit_success(commit_id(), std::move(timestamp), new_sequence.value() - p.precommit_sequence().value());
+         persist_changes(stream, validate_commit_range(head, range));
+         return commit_success(commit_id(), head, stream.state_->event_stream_head());
       }
       catch (...) {
-         rollback_to(*stream.state_, p.precommit_sequence());
-         return p.commit_error(commit_id(), std::move(timestamp), std::current_exception());
+         stream.rollback_to(event_stream_sequence(head));
+         return commit_error(commit_id(), head, commit_timestamp(), std::current_exception());
       }
    }
 };

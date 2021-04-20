@@ -1,38 +1,21 @@
 #pragma once
 
+#include <skizzay/domains/value_object.h>
 #include <concepts>
 
 namespace skizzay::domains {
 
 template<class Tag, std::integral T>
-class sequence {
-    T value_;
-
+class sequence : public value_object<Tag, T> {
 public:
-    using value_type = T;
-
-    constexpr sequence() noexcept :
-        sequence{static_cast<T>(0)}
-    {
-    }
-
-    constexpr explicit sequence(T const value) noexcept :
-        value_{value}
-    {
-    }
-
-    constexpr T value() const noexcept {
-        return value_;
-    }
-
-    constexpr auto operator<=>(sequence const &) const noexcept = default;
+    using value_object<Tag, T>::value_object;
 
     constexpr sequence<Tag, T> next() const noexcept {
-        return sequence<Tag, T>{value_ + static_cast<T>(1)};
+        return sequence<Tag, T>{this->value() + static_cast<T>(1)};
     }
 
     constexpr sequence<Tag, T> previous() const noexcept {
-        return sequence<Tag, T>{value_ - static_cast<T>(1)};
+        return sequence<Tag, T>{this->value() - static_cast<T>(1)};
     }
 };
 

@@ -23,7 +23,7 @@ TEST_CASE("Sequence", "[event_source, sequence]") {
 
     SECTION("next produces the current value plus 1") {
         SECTION("for unsigned sequences") {
-            unsigned_sequenced const current{3};
+            unsigned_sequenced const current{3U};
             REQUIRE(4 == current.next().value());
         }
 
@@ -35,7 +35,7 @@ TEST_CASE("Sequence", "[event_source, sequence]") {
 
     SECTION("previous produces the current value minus 1") {
         SECTION("for unsigned sequences") {
-            unsigned_sequenced const current{3};
+            unsigned_sequenced const current{3U};
             REQUIRE(2 == current.previous().value());
         }
 

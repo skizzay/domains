@@ -63,7 +63,7 @@ struct custom_event_handler {
 
 TEST_CASE("Event", "[event_source, event]") {
    std::string const expected_stream_id = "test_event_stream_id";
-   test_sequence const expected_sequence{12};
+   test_sequence const expected_sequence{12UL};
    std::chrono::steady_clock::time_point const expected_timestamp = std::chrono::steady_clock::now();
    test_event const te{expected_stream_id, expected_sequence, expected_timestamp};
    customized_test_event const cte{expected_stream_id, expected_sequence, expected_timestamp};

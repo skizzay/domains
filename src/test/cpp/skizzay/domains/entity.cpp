@@ -67,7 +67,7 @@ TEST_CASE("entity_id", "[aggregate][entity]") {
 
 TEST_CASE("entity_version", "[aggregate][entity]") {
    SECTION("Member function") {
-      entity_version_type const expected{55};
+      entity_version_type const expected{55UL};
       test_entity target{"entity_id", expected};
       auto const actual = entity_version(target);
 
@@ -77,7 +77,7 @@ TEST_CASE("entity_version", "[aggregate][entity]") {
    }
 
    SECTION("Tagged dispatch") {
-      entity_version_type const expected{55};
+      entity_version_type const expected{55UL};
       tagged_entity_version target{expected};
       auto const actual = entity_version(target);
 

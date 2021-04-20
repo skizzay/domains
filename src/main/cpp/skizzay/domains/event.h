@@ -1,9 +1,10 @@
 #pragma once
 
+#include <skizzay/domains/concepts.h>
+#include <skizzay/domains/event_stream_head.h>
+#include <skizzay/domains/tag_dispatch.h>
 #include <functional>
 #include <ranges>
-#include <skizzay/domains/concepts.h>
-#include <skizzay/domains/tag_dispatch.h>
 #include <utility>
 #include <variant>
 
@@ -61,6 +62,11 @@ inline constexpr struct event_stream_id_function_ final {
          return std::invoke(*this, concrete_event);
       }, e);
    }
+
+   template<concepts::event_stream_head EventStreamHead>
+   constexpr decltype(auto) operator()(EventStreamHead const &esh) const noexcept {
+      return std::get<0>(esh);
+   }
 } event_stream_id = {};
 } // namespace event_stream_id_details_
 
@@ -115,6 +121,11 @@ inline constexpr struct event_stream_sequence_function_ final {
          return std::invoke(*this, concrete_event);
       }, e);
    }
+
+   template<concepts::event_stream_head EventStreamHead>
+   constexpr decltype(auto) operator()(EventStreamHead const &esh) const noexcept {
+      return std::get<1>(esh);
+   }
 } event_stream_sequence = {};
 } // namespace event_stream_sequence_details_
 
@@ -167,6 +178,11 @@ inline constexpr struct event_stream_timestamp_function_ final {
       return std::visit([this](auto const &concrete_event) -> std::invoke_result_t<event_stream_timestamp_function_, E> {
          return std::invoke(*this, concrete_event);
       }, e);
+   }
+
+   template<concepts::event_stream_head EventStreamHead>
+   constexpr decltype(auto) operator()(EventStreamHead const &esh) const noexcept {
+      return std::get<2>(esh);
    }
 } event_stream_timestamp = {};
 } // namespace event_stream_timestamp_details_
@@ -247,7 +263,7 @@ template<typename, typename=void> struct event_stream_id_type_impl;
 
 template<typename T>
 struct event_stream_id_type_impl<T, std::void_t<decltype(event_stream_id(std::declval<T>()))>> {
-   using type = decltype(event_stream_id(std::declval<T>()));
+   using type = std::remove_cvref_t<decltype(event_stream_id(std::declval<T>()))>;
 };
 
 template<concepts::event_range EventRange>
@@ -259,7 +275,7 @@ template<typename, typename=void> struct event_stream_sequence_type_impl;
 
 template<typename Event>
 struct event_stream_sequence_type_impl<Event, std::void_t<decltype(event_stream_sequence(std::declval<Event>()))>> {
-   using type = decltype(event_stream_sequence(std::declval<Event>()));
+   using type = std::remove_cvref_t<decltype(event_stream_sequence(std::declval<Event>()))>;
 };
 
 template<concepts::event_range EventRange>
@@ -276,7 +292,7 @@ template<typename, typename=void> struct event_stream_timestamp_type_impl;
 
 template<typename Event>
 struct event_stream_timestamp_type_impl<Event, std::void_t<decltype(event_stream_timestamp(std::declval<Event>()))>> {
-   using type = decltype(event_stream_timestamp(std::declval<Event>()));
+   using type = std::remove_cvref_t<decltype(event_stream_timestamp(std::declval<Event>()))>;
 };
 
 template<concepts::event_range EventRange>

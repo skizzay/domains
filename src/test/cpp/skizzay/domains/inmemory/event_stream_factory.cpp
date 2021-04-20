@@ -18,7 +18,7 @@ using mutex_type = null_mutex<true>;
 namespace {
 
 using stream_id_type = std::string;
-using stream_sequence_type = sequence<struct test, std::size_t>;
+using stream_sequence_type = sequence<struct test, int>;
 using stream_timestamp_type = std::chrono::high_resolution_clock::time_point;
 using test_event = tagged_event<struct test, stream_id_type, stream_sequence_type, stream_timestamp_type>;
 using commit_timestamp_provider = decltype(&std::chrono::high_resolution_clock::now);
@@ -65,7 +65,8 @@ TEST_CASE("In-Memory Event Store", "[event_source, event_stream_factory, event_s
          std::vector raw_events{test_event{stream_id, stream_sequence_type{22}}, test_event{stream_id, stream_sequence_type{23}}};
 
          SECTION("when we put items into the stream") {
-            auto commit = put_event_stream(target, event_stream, raw_events);
+            // auto commit = put_event_stream(target, event_stream, raw_events);
+            auto commit = target.put_event_stream(event_stream, raw_events);
             SECTION("then a concurrency collision was encountered") {
                REQUIRE(commit.error());
             }
@@ -123,7 +124,8 @@ TEST_CASE("In-Memory Event Store", "[event_source, event_stream_factory, event_s
                         return commit_timestamp == event_stream_timestamp(e);
                      }
                   );
-                  REQUIRE(2 == std::distance(std::ranges::begin(filtered_events), std::ranges::end(filtered_events)));
+                  auto actual = std::distance(std::ranges::begin(filtered_events), std::ranges::end(filtered_events));
+                  REQUIRE(2 == actual);
                }
             }
          }

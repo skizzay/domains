@@ -6,6 +6,8 @@
 #include <vector>
 #include <skizzay/domains/concepts.h>
 #include <skizzay/domains/event.h>
+#include <skizzay/domains/event_stream_head.h>
+#include <skizzay/domains/validated_event_range.h>
 
 namespace skizzay::domains {
 
@@ -21,7 +23,7 @@ concept commit = requires(T const &t) {
    { t.event_stream_ending_sequence() }->concepts::sequenced;
    { t.error() }->std::same_as<std::optional<typename T::error_type>>;
    requires std::same_as<decltype(t.event_stream_starting_sequence()), decltype(t.event_stream_ending_sequence())>;
-};
+};   
 } // namespace concepts
 
 
@@ -124,6 +126,25 @@ private:
 };
 
 
+template<concepts::identifier CommitId, concepts::event_stream_head EventStreamHead, typename ErrorType=std::exception_ptr>
+constexpr basic_commit<CommitId, event_stream_id_t<EventStreamHead>, event_stream_sequence_t<EventStreamHead>, event_stream_timestamp_t<EventStreamHead>, ErrorType>
+commit_success(CommitId commit_id, EventStreamHead const &before, EventStreamHead const &after, [[maybe_unused]] ErrorType error={}) {
+   return basic_commit{std::move(commit_id), event_stream_id(before), event_stream_timestamp(after), event_stream_sequence(before).next(), event_stream_sequence(after)};
+}
+
+
+template<concepts::identifier CommitId, concepts::event_stream_head EventStreamHead, typename ErrorType>
+constexpr basic_commit<CommitId, event_stream_id_t<EventStreamHead>, event_stream_sequence_t<EventStreamHead>, event_stream_timestamp_t<EventStreamHead>, ErrorType>
+commit_error(CommitId commit_id, EventStreamHead const &before, event_stream_timestamp_t<EventStreamHead> commit_timestamp, ErrorType error) {
+   return basic_commit<CommitId, event_stream_id_t<EventStreamHead>, event_stream_sequence_t<EventStreamHead>, event_stream_timestamp_t<EventStreamHead>, ErrorType>{
+      std::move(commit_id),
+      event_stream_id(before),
+      std::move(commit_timestamp),
+      std::move(error)
+   };
+}
+
+
 template<
    concepts::identifier EventStreamId,
    concepts::sequenced EventStreamSequence
@@ -143,18 +164,28 @@ struct precommit final {
       return precommit_sequence_;
    }
 
+   template<concepts::event_range EventRange>
+   constexpr auto validate(EventRange &events) const {
+      if (std::ranges::empty(events)) {
+         throw std::range_error{"Range is empty"};
+      }
+      else {
+         return events | ensure_event_is_sequenced(precommit_sequence_.next()) | ensure_event_id_matches(event_stream_id_);
+      }
+   }
+
    template<
       concepts::identifier CommitId,
       concepts::timestamp CommitTimestamp,
       typename Error=std::exception_ptr
    >
-   constexpr auto commit_success(CommitId commit_id, CommitTimestamp commit_timestamp, std::size_t const num_events, [[maybe_unused]] Error e={}) const noexcept {
+   constexpr auto commit_success(CommitId commit_id, CommitTimestamp commit_timestamp, EventStreamSequence::value_type const num_events, [[maybe_unused]] Error e={}) const noexcept {
       return basic_commit<CommitId, EventStreamId, EventStreamSequence, CommitTimestamp, Error> {
          std::move(commit_id),
          event_stream_id_,
          std::move(commit_timestamp),
          precommit_sequence_.next(),
-         EventStreamSequence{precommit_sequence_.value() + static_cast<typename EventStreamSequence::value_type>(num_events)}
+         EventStreamSequence{precommit_sequence_.value() + num_events}
       };
    }
 

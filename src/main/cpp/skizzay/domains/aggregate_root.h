@@ -1,5 +1,6 @@
 #pragma once
 
+#include <skizzay/domains/concepts.h>
 #include <skizzay/domains/entity.h>
 #include <skizzay/domains/event.h>
 #include <algorithm>
@@ -237,16 +238,16 @@ protected:
    template<concepts::event E>
       requires (!std::same_as<E, Event>)
    constexpr void handle_event(E const &e) {
-      static_cast<Entity *>(this)->on(dereference(e));
+      static_cast<Entity *>(this)->on(get_reference(e));
    }
 
    constexpr void handle_event(Event const &event) {
       dispatch_event([this]<concepts::event E>(E const &e) mutable {
-         if constexpr (std::same_as<E, std::remove_reference_t<dereferenced_t<Event>>>) {
-            static_cast<Entity *>(this)->on(dereference(e));
+         if constexpr (concepts::same_reference_removed<E, Event>) {
+            static_cast<Entity *>(this)->on(get_reference(e));
          }
          else {
-            handle_event(dereference(e));
+            handle_event(get_reference(e));
          }
       }, event);
    }
